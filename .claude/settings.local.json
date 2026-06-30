@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "PowerShell(Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd \"C:\\\\Sukriti\\\\Apps\\\\BrainBlitz\\\\Brain Blitz - Final\"; npm run dev')",
+      "Bash(node -e ' *)",
+      "PowerShell(gh --version 2>&1)"
+    ]
+  }
+}

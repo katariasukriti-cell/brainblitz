@@ -1,0 +1,6 @@
+node_modules
+dist
+.DS_Store
+*.bak
+generate-icons.mjs
+fix-encoding.mjs
