@@ -1556,10 +1556,10 @@ function HomeScreen({ theme, go, openArticle, todayGoalArticles, streak, level, 
       </div>
 
       {goalComplete ? (
-        <div style={{margin:"14px 20px 0",borderRadius:22,padding:"30px 20px",background:theme.cardGrad,border:"1px solid "+theme.border,textAlign:"center"}}>
-          <div style={{fontSize:48,marginBottom:12}}>\uD83C\uDF89</div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:900,color:theme.text,marginBottom:8}}>Goal complete!</div>
-          <div style={{fontSize:14,color:theme.sub,lineHeight:1.6,marginBottom:16}}>You've read all {readingGoal} article{readingGoal!==1?"s":""} for today. Come back tomorrow for a fresh set.</div>
+        <div style={{margin:"14px 20px 0",borderRadius:22,padding:"34px 24px",background:theme.cardGrad,border:"1px solid "+theme.border,textAlign:"center"}}>
+          <div style={{fontSize:52,marginBottom:14}}>\uD83C\uDF89</div>
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:900,color:theme.text,marginBottom:8}}>Goal complete!</div>
+          <div style={{fontSize:14,color:theme.sub,lineHeight:1.7,marginBottom:20}}>{"You crushed your "+readingGoal+"-article goal for today. Come back tomorrow for a fresh batch."}</div>
           <button onClick={()=>go("browse")} style={{background:theme.accent,color:theme.accentText,border:"none",borderRadius:14,padding:"13px 24px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Explore more articles \u2192</button>
         </div>
       ) : goalArticles.length === 0 ? (
@@ -1570,11 +1570,8 @@ function HomeScreen({ theme, go, openArticle, todayGoalArticles, streak, level, 
         </div>
       ) : (
         <div style={{padding:"14px 20px 8px",display:"flex",flexDirection:"column",gap:14}}>
-          {goalArticles.map((a, i) => (
-            <div key={a.id} style={{position:"relative"}}>
-              <ArticleCard theme={theme} article={a} delay={i*0.05} onClick={()=>openArticle(a)} />
-              {learned.includes(a.id) && <div style={{position:"absolute",top:10,right:10,background:"rgba(0,255,136,0.2)",border:"1px solid rgba(0,255,136,0.4)",borderRadius:20,padding:"3px 10px",fontSize:10,color:"#00FF88",fontWeight:600}}>{"\u2713"} Read</div>}
-            </div>
+          {goalArticles.filter(a => !learned.includes(a.id)).map((a, i) => (
+            <ArticleCard key={a.id} theme={theme} article={a} delay={i*0.05} onClick={()=>openArticle(a)} />
           ))}
         </div>
       )}
