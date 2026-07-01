@@ -1315,6 +1315,20 @@ export default function App() {
     setReadingGoal(data.goal); S.set("bb_goal", data.goal);
     setReviewFreq(data.rfreq); S.set("bb_rfreq", data.rfreq);
     setReviewOn(data.ron); S.set("bb_ron", data.ron);
+    // Tag user in OneSignal with their preferred notification UTC hour
+    if (data.ntime) {
+      const [h, m] = data.ntime.split(":").map(Number);
+      const now = new Date();
+      const localOffset = now.getTimezoneOffset(); // minutes behind UTC
+      const prefMinutes = h * 60 + m + localOffset; // convert local time to UTC minutes
+      const utcHour = ((Math.floor(prefMinutes / 60)) % 24 + 24) % 24;
+      window.OneSignalDeferred?.push((OneSignal) => {
+        OneSignal.User.addTags({
+          notif_utc_hour: String(utcHour),
+          notif_enabled: "true"
+        });
+      });
+    }
   };
 
   const level = Math.floor(xp / 200) + 1;

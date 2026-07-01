@@ -1,0 +1,392 @@
+name: BrainBlitz Notifications
+
+on:
+  schedule:
+    # Runs every hour at :00
+    - cron: '0 * * * *'
+  workflow_dispatch: # allows manual trigger from GitHub dashboard
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send BrainBlitz Notifications
+        env:
+          ONESIGNAL_APP_ID: b05e6457-a979-49ba-80fc-82facd95120d
+          ONESIGNAL_REST_KEY: ${{ secrets.ONESIGNAL_REST_KEY }}
+        run: |
+          node << 'EOF'
+
+          const APP_ID = process.env.ONESIGNAL_APP_ID;
+          const REST_KEY = process.env.ONESIGNAL_REST_KEY;
+
+          // 365 daily facts — one per day of year
+          const FACTS = [
+            "Lightning reaches temperatures of 30,000 Kelvin — five times hotter than the surface of the Sun.",
+            "The human body contains roughly 37 trillion cells, each with a complete copy of your DNA.",
+            "Honey never spoils. Archaeologists have found 3,000-year-old honey in Egyptian tombs that was still edible.",
+            "A day on Venus is longer than a year on Venus — it rotates so slowly that it completes an orbit before one full spin.",
+            "The Great Wall of China is not visible from space with the naked eye — the myth was debunked by astronauts.",
+            "Octopuses have three hearts, blue blood, and can edit their own RNA to adapt to temperature changes.",
+            "The Eiffel Tower grows about 15 centimetres taller in summer because heat causes the iron to expand.",
+            "Cleopatra lived closer in time to the Moon landing than to the construction of the Great Pyramid.",
+            "A group of flamingos is called a 'flamboyance'. A group of crows is called a 'murder'.",
+            "The world's oldest living tree, Methuselah, is approximately 4,800 years old and grows in California.",
+            "Bananas are technically berries. Strawberries, raspberries, and blackberries are not.",
+            "The human eye can distinguish around 10 million different colours.",
+            "Oxford University is older than the Aztec Empire — teaching began there around 1096 AD.",
+            "Sea otters hold hands while sleeping so they don't drift apart. This is called a 'raft'.",
+            "The average cloud weighs around 500,000 kilograms — roughly the same as 80 elephants.",
+            "Shakespeare invented over 1,700 words we still use today, including 'bedroom', 'lonely', and 'generous'.",
+            "A bolt of lightning contains enough energy to toast about 100,000 slices of bread.",
+            "The Sahara Desert was a lush, green savannah around 6,000 years ago, complete with rivers and hippos.",
+            "Wombat droppings are cube-shaped — the only known animal to produce cubic faeces.",
+            "There are more possible iterations of a game of chess than there are atoms in the observable universe.",
+            "The smell of rain has a name: petrichor. It comes from oils released by plants absorbed into the soil.",
+            "A single strand of spaghetti is called a 'spaghetto'. One piece of confetti is 'confetto'.",
+            "Crows can recognise human faces and hold grudges against people who have wronged them.",
+            "The Hawaiian alphabet has only 13 letters — the shortest of any language's alphabet.",
+            "Your stomach gets a new lining every three to four days to avoid digesting itself.",
+            "The Apollo 11 computers had less processing power than a modern USB stick.",
+            "Polar bears have black skin under their white fur — the fur reflects light to appear white.",
+            "A human sneeze travels at about 160 km/h and can send 100,000 germs into the air.",
+            "The first oranges in history were green — the orange variety came from a natural mutation.",
+            "Butterflies taste with their feet — they have taste sensors on their tarsal legs.",
+            "The Dead Sea is so salty you can read a book while floating in it without effort.",
+            "Mount Everest grows about 4 millimetres taller each year due to tectonic uplift.",
+            "A group of porcupines is called a 'prickle'. A group of hedgehogs is called an 'array'.",
+            "The average person will spend six months of their life waiting for red lights to change.",
+            "Sharks are older than trees — sharks evolved about 450 million years ago, trees about 350 million years ago.",
+            "The letter 'J' is the only letter that does not appear in the periodic table of elements.",
+            "A day on Mars lasts 24 hours and 37 minutes — almost identical to a day on Earth.",
+            "Almonds are not actually nuts — they are the seeds of a fruit related to the peach.",
+            "The dot over a lowercase 'i' or 'j' has a name: it is called a tittle.",
+            "A blue whale's heart is so large a small child could crawl through its arteries.",
+            "The fingerprints of a koala are so similar to human fingerprints they have confused crime scene investigators.",
+            "Clams can live for over 500 years. The oldest recorded clam, named Ming, was 507 years old.",
+            "The moon is moving away from Earth at a rate of about 3.8 centimetres per year.",
+            "Pineapples take about two years to grow. Each plant typically produces only one pineapple at a time.",
+            "The word 'trivia' comes from Latin 'trivium', meaning the place where three roads meet — a public place for chat.",
+            "A group of jellyfish is called a 'smack'. A group of sharks is called a 'shiver'.",
+            "Hot water freezes faster than cold water under certain conditions — this is called the Mpemba effect.",
+            "The platypus is one of the few mammals that lays eggs and produces venom.",
+            "There are more bacteria in your mouth right now than there are people on Earth.",
+            "The longest word in English with no repeated letters is 'uncopyrightable' — 15 letters.",
+            "Penguins propose to their mates with a pebble. If she accepts, they stay together for life.",
+            "The Colosseum in Rome could hold up to 80,000 spectators — comparable to modern sports stadiums.",
+            "Your bones are roughly five times stronger than steel of the same weight.",
+            "The shortest war in history lasted 38–45 minutes — between Britain and Zanzibar in 1896.",
+            "Goldfish have a memory span of at least three months — the 'three second' myth is false.",
+            "One teaspoon of a neutron star would weigh about six billion tonnes.",
+            "Elephants are the only animals that cannot jump — and they are also the only mammals with four knees.",
+            "The word 'muscle' comes from the Latin 'musculus', meaning 'little mouse', because flexing looks like a mouse moving under skin.",
+            "There are more stars in the observable universe than grains of sand on all of Earth's beaches.",
+            "The first computer bug was a real bug — a moth found inside a Harvard computer relay in 1947.",
+            "A snail can sleep for up to three years if conditions are too dry or cold.",
+            "The shortest complete sentence in the English language is 'Go.'",
+            "Cows have best friends and become stressed when separated from them.",
+            "The tongue is the fastest healing organ in the human body.",
+            "Ancient Romans used crushed mouse brains as toothpaste.",
+            "The average person produces enough saliva in a lifetime to fill two swimming pools.",
+            "A group of owls is called a 'parliament'. A group of cats is called a 'clowder'.",
+            "The human nose can detect over one trillion different scents.",
+            "Ants have been farming fungi for over 50 million years — long before humans invented agriculture.",
+            "The first product to have a barcode scanned was a pack of Wrigley's chewing gum in 1974.",
+            "A shrimp's heart is in its head.",
+            "The longest hiccuping episode on record lasted 68 years — Charles Osborne hiccuped from 1922 to 1990.",
+            "The shortest distance between two countries is 3.8 km — between Spain and Morocco across the Strait of Gibraltar.",
+            "Penguins cannot walk backwards, but they can swim faster than most fish.",
+            "There is a species of jellyfish that is technically immortal — it reverts to its juvenile state when stressed.",
+            "The world's most expensive spice by weight is saffron — hand-harvested from crocus flowers.",
+            "A cockroach can live for several weeks without its head — it dies of dehydration, not blood loss.",
+            "The human heart beats about 100,000 times a day and pumps about 7,500 litres of blood.",
+            "Glass is not actually a solid — it is an amorphous solid that shares properties with both liquids and solids.",
+            "The shortest river in the world is the Roe River in Montana, USA — just 61 metres long.",
+            "Kangaroos cannot walk backwards — their large tails and hind legs make reverse movement impossible.",
+            "A jiffy is an actual unit of time — it equals one hundredth of a second.",
+            "The first alarm clock could only ring at 4 AM — it was built by Levi Hutchins in 1787.",
+            "Elephants are the only animals known to have death rituals — they mourn and bury their dead.",
+            "The Mona Lisa has no eyebrows — it was fashionable to shave them off in 15th-century Florence.",
+            "Humans share 60% of their DNA with bananas.",
+            "The inventor of the Pringles can was buried in one — Fredric Baur had his ashes placed inside a Pringles tin.",
+            "A day on Mercury lasts longer than a year on Mercury due to its slow rotation.",
+            "Cats cannot taste sweet things — they lack the taste receptors for sweetness.",
+            "The average person walks about 100,000 kilometres in a lifetime — roughly twice around the Earth.",
+            "The world's largest organism is a fungus — Armillaria ostoyae in Oregon covers 9 square kilometres.",
+            "Dolphins have names for each other — they use unique whistles to identify individuals.",
+            "The plastic tips on shoelaces are called aglets.",
+            "A group of ravens is called an 'unkindness'. A group of vultures is called a 'committee'.",
+            "The Great Barrier Reef is the only living structure visible from space.",
+            "Humans are the only animals that blush.",
+            "The average person has around 70,000 thoughts per day.",
+            "Sound travels four times faster through water than through air.",
+            "The first feature-length film with synchronised dialogue was The Jazz Singer in 1927.",
+            "Cleopatra spoke nine languages. Julius Caesar spoke only Latin and Greek.",
+            "The world's largest snowflake on record was 38 centimetres wide and 20 centimetres thick.",
+            "A group of flamingos is called a 'flamboyance'. Only flamingos can bend their legs backwards.",
+            "The strongest muscle in the body relative to its size is the masseter — your jaw muscle.",
+            "The inventor of the World Wide Web, Tim Berners-Lee, has never received a patent — he gave it away for free.",
+            "Honey bees can recognise human faces the same way humans do.",
+            "The shortest street in the world is Ebenezer Place in Wick, Scotland — just 2.06 metres long.",
+            "Your brain uses about 20% of your body's total energy despite accounting for only 2% of its weight.",
+            "The longest English word that can be typed using only the left hand is 'stewardesses'.",
+            "A cloud can be classified into one of ten basic types, most defined by Luke Howard in 1802.",
+            "The first domain name ever registered was Symbolics.com, on 15 March 1985.",
+            "There are more possible arrangements of a shuffled deck of cards than atoms on Earth.",
+            "A group of pandas is called an 'embarrassment'. They spend up to 14 hours a day eating bamboo.",
+            "The microwave oven was invented by accident — Percy Spencer noticed a radar beam had melted his chocolate bar.",
+            "Humans are the only animals that cook their food — heat dramatically increases the energy we extract from it.",
+            "The Moon has moonquakes — caused by Earth's gravitational pull and the thermal expansion of rock.",
+            "A bolt of lightning creates nitrogen oxides in the air that fertilise the soil when they fall as rain.",
+            "The first novel ever written is considered to be The Tale of Genji, written in Japan around 1000 AD.",
+            "Lobsters were once considered so low-class in America they were fed to prisoners and servants.",
+            "The national animal of Scotland is the unicorn.",
+            "Cacao — used to make chocolate — comes from fermenting seeds inside a football-sized fruit.",
+            "The ampersand (&) was once the 27th letter of the English alphabet.",
+            "Tardigrades — microscopic animals — can survive in a vacuum, intense radiation, and temperatures from -272°C to 150°C.",
+            "The average human body contains enough carbon to make about 900 pencils.",
+            "A human hair grows about 15 centimetres per year and lives for two to seven years before falling out.",
+            "The first recorded recipe in history is for beer, written by Sumerians around 1800 BC.",
+            "Your left lung is smaller than your right lung to make room for your heart.",
+            "The phrase 'rule of thumb' may come from an old English law that allowed husbands to beat wives with sticks no thicker than a thumb.",
+            "The speed of light in a vacuum is exactly 299,792,458 metres per second.",
+            "A day on Saturn lasts only 10 hours and 33 minutes despite the planet being enormous.",
+            "The word 'quarantine' comes from Italian quarantina giorni, meaning 'forty days' — the isolation period in medieval Venice.",
+            "Horses cannot breathe through their mouths — they are obligate nasal breathers.",
+            "The Great Pyramid of Giza was the tallest man-made structure in the world for 3,800 years.",
+            "A group of meerkats is called a 'mob'. They post sentries and use different alarm calls for different predators.",
+            "The first email was sent in 1971 by Ray Tomlinson — he chose @ to separate the user from the machine.",
+            "Strawberries are not true berries, but avocados, bananas, and kiwis technically are.",
+            "Humans are the only primates without pigmented eyes — our white sclera is unique in the animal kingdom.",
+            "The Eiffel Tower was originally intended to be dismantled after 20 years. It was saved because it made a great radio antenna.",
+            "Blood is red because of haemoglobin, which contains iron. Horseshoe crab blood is blue because it contains copper.",
+            "The first vending machine was invented in ancient Egypt around 215 BC — it dispensed holy water for a coin.",
+            "A group of hippos is called a 'bloat'. Hippos produce their own natural sunscreen — a red oily liquid.",
+            "The Amazon River discharges about 20% of all freshwater entering the world's oceans.",
+            "There are 293 ways to make change for a US dollar using coins.",
+            "The deepest point in the ocean, Challenger Deep, is deeper than Mount Everest is tall.",
+            "A human eye blinks roughly 15-20 times per minute — about 10 million times a year.",
+            "Chess was invented in India around the 6th century AD and was called chaturanga.",
+            "The world's most venomous animal is the box jellyfish — not a snake or spider.",
+            "Your taste buds are replaced every ten days.",
+            "The national flag of Nepal is the only non-rectangular national flag in the world.",
+            "Camels have three eyelids — the third is transparent and protects their eyes from sandstorms.",
+            "The human body has 206 bones, but babies are born with around 270 — they fuse as we grow.",
+            "Water can boil and freeze at the same time — this is called the triple point, at exactly 0.01°C.",
+            "It takes about 8 minutes and 20 seconds for sunlight to reach Earth.",
+            "Bamboo is the fastest-growing plant on Earth — it can grow up to 91 cm in a single day.",
+            "There are more possible configurations of a Rubik's Cube than there are seconds since the Big Bang.",
+            "The word 'salary' comes from the Latin word for salt — Roman soldiers were sometimes paid in salt.",
+            "A group of ferrets is called a 'business'. A group of bats is called a 'cauldron'.",
+            "The skin is the largest organ in the human body, covering about 1.7 to 2 square metres.",
+            "The ancient Greeks had no word for 'blue' — it appears nowhere in Homer's Iliad or Odyssey.",
+            "A python can go over a year without eating after a large meal.",
+            "The human brain generates about 23 watts of power — enough to power a dim light bulb.",
+            "Saturn's moon Titan has lakes, rivers and rain — but they are made of liquid methane, not water.",
+            "The concept of zero as a number was developed independently in India and Mesoamerica.",
+            "A group of crows is a murder. A group of magpies is called a 'parliament'.",
+            "The world's most popular sport by participation is not football — it's badminton.",
+            "There are more trees on Earth than stars in the Milky Way galaxy.",
+            "The original Monopoly was designed as a teaching tool to illustrate the injustice of land ownership.",
+            "A mantis shrimp can punch with the speed of a bullet and sees 16 types of colour receptors — humans have three.",
+            "All the gold ever mined would fit into a cube roughly 21 metres on each side.",
+            "A group of sloths is called a 'bed'. Sloths are so slow that algae grow on their fur.",
+            "The term 'honeymoon' comes from an old Northern European tradition of drinking mead for one lunar month after a wedding.",
+            "Rats laugh when tickled — at an ultrasonic frequency inaudible to humans.",
+            "The Voyager 1 spacecraft, launched in 1977, has now left our solar system and is the most distant human-made object.",
+            "Your heart generates enough pressure to squirt blood 9 metres into the air.",
+            "A group of butterflies is called a 'kaleidoscope'. Butterflies can see ultraviolet light.",
+            "There are more public libraries in the United States than there are McDonald's restaurants.",
+            "The tongue print of every person is as unique as their fingerprints.",
+            "A typical cloud contains 500 tonnes of water vapour, yet floats because the droplets are tiny and light.",
+            "Reindeer eyes turn from gold in summer to blue in winter — helping them see UV light in Arctic darkness.",
+            "The world's quietest room is so silent that you can hear your own heartbeat, breathing, and the blood flowing in your veins.",
+            "A day on Pluto is 6.4 Earth days long, and one year takes 248 Earth years.",
+            "The first webcam was created at Cambridge University to monitor a coffee pot so staff could see if it was empty before walking to the kitchen.",
+            "Gorillas can catch human colds and other illnesses — they share 98.3% of human DNA.",
+            "The wingspan of a Boeing 747 is longer than the Wright brothers' first flight at Kitty Hawk.",
+            "There are no muscles in your fingers — all movement is controlled by muscles in your palm and forearm.",
+            "The name 'Google' was a misspelling of 'googol' — the number 1 followed by 100 zeros.",
+            "Mount Olympus on Mars is three times taller than Mount Everest.",
+            "The world record for the longest time holding one's breath underwater is 24 minutes and 37 seconds.",
+            "Bees can recognise faces and remember them for days.",
+            "A group of giraffes is called a 'tower'. Their tongues are blue-black and can be 45 cm long.",
+            "The first recorded use of 'OMG' was in a 1917 letter to Winston Churchill.",
+            "Humans are the only animals that cry emotional tears.",
+            "An average mattress doubles in weight over ten years due to the accumulation of dead skin and dust mites.",
+            "The Amazon River flows so powerfully that it pushes freshwater 200 km into the Atlantic Ocean.",
+            "A group of kittens is called a 'kindle'. A group of adult cats is called a 'clowder'.",
+            "The shortest commercial flight in the world lasts just 57 seconds — between two Scottish islands, Westray and Papa Westray.",
+            "Clocks run clockwise because that is the direction that sundials' shadows move in the Northern Hemisphere.",
+            "A group of wombats is called a 'wisdom'. Wombats are the only animals known to produce cube-shaped faeces.",
+            "Your body replaces most of its cells within seven to ten years — you are not literally the same person you were a decade ago.",
+            "The world's largest diamond was found in a South African mine in 1905 — the Cullinan Diamond weighed 3,106 carats.",
+            "A dragonfly can fly in any direction including sideways and backwards, and can reach speeds of 56 km/h.",
+            "Trypophobia — the fear of clusters of holes — affects a significant portion of the population despite not appearing in any official diagnostic manuals until recently.",
+            "Dolphins sleep with one eye open and half their brain active — a technique called unihemispheric sleep.",
+            "The Incas had no written language — they recorded complex data using a system of knotted strings called quipu.",
+            "A bolt of lightning carries so little total energy that it could only power a 60-watt light bulb for about half a second.",
+            "The human small intestine is about seven metres long — the large intestine is only 1.5 metres, but wider.",
+            "Armadillos are the only non-human animals that naturally contract leprosy.",
+            "The longest recorded flight of a chicken lasted 13 seconds.",
+            "The word 'robot' first appeared in a 1920 Czech play by Karel Capek — from the Czech word for 'forced labour'.",
+            "A group of lemurs is called a 'conspiracy'. A group of hyenas is called a 'cackle'.",
+            "Elephants are the only animals that cannot jump — and the only mammals with four knees.",
+            "The first photograph of a human face was taken in 1839 by Louis Daguerre — the subject's foot was also accidentally captured.",
+            "There are more atoms in a glass of water than there are glasses of water in all the Earth's oceans.",
+            "The Venus flytrap is native only to a small region of North and South Carolina in the United States.",
+            "Your blood vessels, laid end to end, would circle the Earth more than twice.",
+            "A group of fish is called a 'school', but a group of sharks is called a 'shiver'.",
+            "The human body sheds about 30,000 to 40,000 dead skin cells every hour.",
+            "The ancient Egyptians shaved off their eyebrows when their cats died, as a sign of mourning.",
+            "Cucumbers are 96% water — making them one of the most hydrating foods you can eat.",
+            "The total length of blood vessels in the human body is approximately 100,000 kilometres.",
+            "A group of hippos is a 'bloat'. Hippos can run at 30 km/h on land despite their bulk.",
+            "Crows are considered among the most intelligent birds — they can use tools, solve puzzles, and plan for the future.",
+            "The first traffic light was installed in London in 1868 — it exploded, killing the policeman operating it.",
+            "A group of elephants is called a 'herd'. The matriarch — oldest female — leads and her memory benefits the whole herd.",
+            "There are an estimated 8.7 million species on Earth, but only about 1.2 million have been named.",
+            "The Galapagos Islands receive so little rain that Darwin called them 'extremely arid'.",
+            "A flamingo can only eat with its head upside down — that is how its beak has evolved.",
+            "The human liver can regenerate itself — you could remove 75% of it and it would grow back.",
+            "Warthogs kneel on their front knees to eat because their necks are too short to reach the ground.",
+            "The Mariana Trench is wide enough to fit the Himalayas inside it with room to spare.",
+            "There are 10 times more bacteria cells in your body than human cells.",
+            "The word 'disaster' comes from the Italian 'disastro', meaning 'bad star' — from the belief that stars influenced fate.",
+            "A group of ravens is called an 'unkindness'. Ravens can plan for the future and deceive other ravens.",
+            "The Atlantic Ocean is widening by about 2.5 centimetres per year as the tectonic plates beneath it drift apart.",
+            "Beetles make up about 40% of all insect species — one in four animals on Earth is a beetle.",
+            "Humans are the only animals that walk on two legs as their primary mode of movement.",
+            "A photon of light takes about 100,000 years to travel from the Sun's core to its surface, and then just 8 minutes to reach Earth.",
+            "The phrase 'breaking the ice' comes from an era when icebreaker ships would clear harbour routes to enable trade ships to pass.",
+            "The moon is not a perfect sphere — it bulges slightly at the equator due to Earth's gravitational pull.",
+            "A single acre of forest can absorb the same amount of carbon dioxide that a car produces driving 40,000 kilometres.",
+            "Sloths move so slowly that algae grow on their fur — which actually helps them camouflage in trees.",
+            "The world's first underground railway, the London Underground, opened in January 1863.",
+            "A flock of starlings performing their murmuration display can include up to one million birds.",
+            "The oldest piece of music ever discovered is a Hurrian hymn from Syria, written on clay tablets around 1400 BC.",
+            "Your corneas are the only tissues in your body that receive oxygen directly from the air, not from blood vessels.",
+            "The speed of sound varies by medium — it is about 340 m/s in air and 1,484 m/s in water.",
+            "There are currently about 2,000 thunderstorms happening on Earth at any given moment.",
+            "A group of turkeys is called a 'gang' or 'rafter'. Only male turkeys gobble — females cluck.",
+            "The plastic in a single-use water bottle can take 450 years to decompose.",
+            "A hummingbird's heart beats up to 1,260 times per minute during flight.",
+            "Chameleons do not change colour primarily for camouflage — they mainly use colour to communicate mood and attract mates.",
+            "The first person convicted of speeding was Walter Arnold in 1896, doing 13 km/h in a 3 km/h zone.",
+            "There are more possible outcomes in a game of Go than atoms in the observable universe.",
+            "A group of ants can carry objects up to 50 times their own body weight.",
+            "The only rock that floats in water is pumice — a volcanic glass filled with gas bubbles.",
+            "A snail's slime is so effective it can crawl across a razor blade without being cut.",
+            "The average person spends six years of their life dreaming.",
+            "A group of parrots is called a 'pandemonium'. African grey parrots have the intelligence of a five-year-old child.",
+            "The 'seventh heaven' expression comes from Islamic and Jewish cosmology, which described seven levels of heaven.",
+            "Goldfish kept in the dark will gradually lose their colour — they need light to maintain their pigmentation.",
+            "The average human body contains about 0.2 milligrams of gold — concentrated mostly in the blood.",
+            "A group of penguins is called a 'waddle' on land, and a 'raft' in water.",
+            "The first mobile phone call was made in 1973 by Motorola engineer Martin Cooper — he called a rival at Bell Labs.",
+            "A sea urchin has five teeth, arranged in a structure called Aristotle's lantern.",
+            "There are more ways to arrange a pack of cards than there are atoms on Earth.",
+            "The word 'marathon' comes from the legend of Pheidippides, who ran from Marathon to Athens to announce a Greek victory — then died.",
+            "Horses are measured in 'hands' — one hand equals 10.16 centimetres.",
+            "The world's largest waterfall by volume is not Niagara — it is the Denmark Strait cataract, entirely underwater.",
+            "Bats are the only mammals capable of true, sustained flight.",
+            "The Aztec Empire lasted only about 100 years — from roughly 1428 to 1521.",
+            "A group of skunks is called a 'surfeit'. When a skunk sprays, the smell can be detected up to 5 km away.",
+            "The human brain reaches full maturity around the age of 25 — the prefrontal cortex develops last.",
+            "There are more microorganisms on a single human hand than there are humans on Earth.",
+            "The inventor of the telephone, Alexander Graham Bell, never telephoned his wife or mother — both were deaf.",
+            "Your eyes can detect a candle flame from 48 kilometres away on a dark, clear night.",
+            "A group of geese in the sky is called a 'skein'. When on the ground, it is called a 'gaggle'.",
+            "The driest non-polar desert on Earth is the Atacama in Chile — some parts have never recorded rainfall.",
+            "There are more possible games of chess than there are atoms in the observable universe.",
+            "Elephants are afraid of bees — researchers have used beehive sounds to drive elephants away from crops.",
+            "The average person eats about 70,000 meals in a lifetime.",
+            "A group of dolphins is called a 'pod'. They are one of the few animals that mate for pleasure.",
+            "The first country to give women the right to vote was New Zealand, in 1893.",
+            "Human teeth are just as hard as shark teeth — both are made primarily of hydroxyapatite.",
+            "A dog's nose print is as unique as a human fingerprint.",
+            "The oldest continuously inhabited city in the world is Damascus, Syria — inhabited for over 11,000 years.",
+            "Cats have 32 muscles in each ear, allowing them to rotate their ears 180 degrees.",
+            "The first powered, controlled flight lasted 12 seconds and covered 37 metres — by the Wright brothers on 17 December 1903.",
+            "An octopus has nine brains — one central brain and a small brain in each of its eight arms.",
+            "The Great Barrier Reef is the world's largest living structure, visible from outer space.",
+            "A single strand of spider silk is five times stronger than steel of the same thickness.",
+            "There are 118 confirmed elements in the periodic table — only 94 occur naturally on Earth.",
+            "Rabbits cannot vomit — their digestive systems only allow food to move in one direction.",
+            "The surface area of your lungs is roughly the same as a tennis court.",
+          ];
+
+          async function sendNotification(payload) {
+            const response = await fetch('https://onesignal.com/api/v1/notifications', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Basic ${REST_KEY}`
+              },
+              body: JSON.stringify({ app_id: APP_ID, ...payload })
+            });
+            const result = await response.json();
+            console.log('Sent:', payload.headings?.en, '| Result:', JSON.stringify(result).slice(0, 120));
+            return result;
+          }
+
+          async function main() {
+            const now = new Date();
+            const utcHour = now.getUTCHours();
+
+            // Get day of year for fact rotation
+            const start = new Date(now.getUTCFullYear(), 0, 0);
+            const diff = now - start;
+            const oneDay = 1000 * 60 * 60 * 24;
+            const dayOfYear = Math.floor(diff / oneDay);
+            const fact = FACTS[dayOfYear % FACTS.length];
+
+            console.log(`UTC hour: ${utcHour} | Day of year: ${dayOfYear}`);
+
+            // 1. PERSONALISED FACT OF THE DAY
+            // Send to users whose preferred UTC hour matches the current hour
+            await sendNotification({
+              filters: [
+                { field: 'tag', key: 'notif_utc_hour', relation: '=', value: String(utcHour) },
+                { field: 'tag', key: 'notif_enabled', relation: '=', value: 'true' }
+              ],
+              headings: { en: '🧠 BrainBlitz — Fact of the Day' },
+              contents: { en: fact },
+              url: 'https://brainblitz-gules.vercel.app'
+            });
+
+            // 2. DAILY QUIZ REMINDER — sent at 9am Sydney time
+            // Sydney is UTC+10 (AEST winter) or UTC+11 (AEDT summer)
+            // Check actual Sydney time to handle DST correctly
+            const sydneyTime = new Date(now.toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
+            const sydneyHour = sydneyTime.getHours();
+            const sydneyMinute = sydneyTime.getMinutes();
+
+            if (sydneyHour === 9 && sydneyMinute < 60) {
+              await sendNotification({
+                included_segments: ['Total Subscriptions'],
+                headings: { en: '⚡ Daily Challenge Ready' },
+                contents: { en: "Your BrainBlitz challenge for today is waiting — can you beat yesterday's score?" },
+                url: 'https://brainblitz-gules.vercel.app'
+              });
+              console.log('Daily quiz reminder sent at 9am Sydney time');
+            }
+
+            // 3. 14-DAY RETENTION REMINDER
+            // Send every day at the same Sydney 9am run to users inactive for 14+ days
+            if (sydneyHour === 9 && sydneyMinute < 60) {
+              await sendNotification({
+                filters: [
+                  { field: 'last_session', relation: '>', value: '13', unit: 'days' }
+                ],
+                headings: { en: '👋 We miss you on BrainBlitz' },
+                contents: { en: "It's been a while! Your review quiz is waiting and there are new facts to discover." },
+                url: 'https://brainblitz-gules.vercel.app'
+              });
+              console.log('14-day retention reminder sent');
+            }
+          }
+
+          main().catch(console.error);
+
+          EOF
