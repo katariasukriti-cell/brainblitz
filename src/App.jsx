@@ -1625,7 +1625,33 @@ function ArticleScreen({ theme, goBack, article, learnedThis, markLearned, setQu
   const [showQuiz, setShowQuiz] = useState(false);
   const [quizDone, setQuizDone] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [translated, setTranslated] = useState(false);
+  const [hindiParas, setHindiParas] = useState(null);
+  const [translating, setTranslating] = useState(false);
+  const [transError, setTransError] = useState(false);
   const paras = article.body.split("\n\n").filter(Boolean);
+
+  async function toggleTranslate() {
+    if (translated) { setTranslated(false); return; }
+    if (hindiParas) { setTranslated(true); return; }
+    setTranslating(true);
+    setTransError(false);
+    try {
+      const results = await Promise.all(paras.map(async (para) => {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=hi&dt=t&q=${encodeURIComponent(para)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        return data[0].map(s => s[0]).join("");
+      }));
+      setHindiParas(results);
+      setTranslated(true);
+    } catch {
+      setTransError(true);
+    }
+    setTranslating(false);
+  }
+
+  const displayParas = translated && hindiParas ? hindiParas : paras;
 
   const openQuiz = () => { setShowQuiz(true); setQuizLock(true); };
   const completeQuiz = () => { setShowQuiz(false); setQuizDone(true); setQuizLock(false); };
@@ -1655,11 +1681,19 @@ function ArticleScreen({ theme, goBack, article, learnedThis, markLearned, setQu
               <span style={{background:theme.pill,color:theme.sub,borderRadius:20,padding:"4px 12px",fontSize:11}}>{"\u{1F4D6}"} {article.readTime} min read</span>
               {learnedThis && <span style={{background:"rgba(74,112,88,0.14)",color:"#4A7058",borderRadius:20,padding:"4px 12px",fontSize:11}}>{"\u2713"} Read</span>}
             </div>
-            <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontWeight:900,lineHeight:1.25,marginBottom:22}}>{article.emoji} {article.title}</h1>
-            {paras.map((p,i)=>(
-              <p key={i} style={{fontSize:16,lineHeight:1.85,opacity:0.88,marginBottom:18}}>
-                {i===0 ? <span style={{float:"left",fontFamily:"'Playfair Display',serif",fontSize:54,lineHeight:0.82,fontWeight:900,paddingRight:10,paddingTop:4,color:theme.accent}}>{p.charAt(0)}</span> : null}
-                {i===0 ? p.slice(1) : p}
+            <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontWeight:900,lineHeight:1.25,marginBottom:14}}>{article.emoji} {article.title}</h1>
+
+            <button onClick={toggleTranslate} style={{display:"flex",alignItems:"center",gap:8,background:translated?theme.accent:theme.pill,color:translated?theme.accentText:theme.text,border:"none",borderRadius:20,padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:20,opacity:translating?0.6:1}}>
+              <span style={{fontSize:15}}>अ</span>
+              {translating ? "Translating…" : translated ? "Back to English" : "Translate to Hindi"}
+            </button>
+            {transError && <div style={{fontSize:12,color:"#E74C3C",marginBottom:12}}>Translation failed — please check your connection and try again.</div>}
+            {translated && <div style={{fontSize:11,color:theme.sub,marginBottom:16,fontStyle:"italic"}}>Translated by Google. Accuracy may vary.</div>}
+
+            {displayParas.map((p,i)=>(
+              <p key={i} style={{fontSize:16,lineHeight:1.85,opacity:0.88,marginBottom:18,fontFamily:translated?"'Noto Sans Devanagari',sans-serif":undefined}}>
+                {i===0 && !translated ? <span style={{float:"left",fontFamily:"'Playfair Display',serif",fontSize:54,lineHeight:0.82,fontWeight:900,paddingRight:10,paddingTop:4,color:theme.accent}}>{p.charAt(0)}</span> : null}
+                {i===0 && !translated ? p.slice(1) : p}
               </p>
             ))}
 
