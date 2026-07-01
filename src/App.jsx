@@ -1385,6 +1385,21 @@ export default function App() {
   })();
   const todayPickRead = learned.includes(todayPick.id);
 
+  // Lock today's goal articles for the day — chosen once and stored, never replaced mid-day
+  const todayGoalArticles = (() => {
+    const key = "bb_goal_articles_" + TODAY;
+    const stored = S.get(key, null);
+    if (stored) {
+      // Restore from storage — include even already-read ones so they show with a badge
+      return stored.map(id => ARTICLES.find(a => a.id === id)).filter(Boolean);
+    }
+    // First load of the day: pick readingGoal unread articles and lock them in
+    const pool = ARTICLES.filter(a => !learned.includes(a.id) && userTopics.includes(a.category) && a.id !== todayPick.id);
+    const picked = seededShuffle(pool, TODAY).slice(0, readingGoal);
+    S.set(key, picked.map(a => a.id));
+    return picked;
+  })();
+
   const suggested = (() => {
     const unread = ARTICLES.filter(a => !learned.includes(a.id) && userTopics.includes(a.category) && a.id !== todayPick.id);
     return seededShuffle(unread, TODAY);
@@ -1431,7 +1446,7 @@ export default function App() {
       <style>{CSS}</style>
       <div style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",display:"flex",flexDirection:"column",position:"relative"}}>
         <div style={{flex:1,overflowY:"auto",paddingBottom:isSub?0:78}}>
-          {screen==="home" && <HomeScreen theme={theme} go={go} openArticle={openArticle} suggested={suggested} streak={streak} level={level} userName={userName} photo={photo} dailyDone={dailyDone} reviewDue={reviewDue} todayPick={todayPick} todayPickRead={todayPickRead} readingGoal={readingGoal} learned={learned} />}
+          {screen==="home" && <HomeScreen theme={theme} go={go} openArticle={openArticle} todayGoalArticles={todayGoalArticles} streak={streak} level={level} userName={userName} photo={photo} dailyDone={dailyDone} reviewDue={reviewDue} todayPick={todayPick} todayPickRead={todayPickRead} readingGoal={readingGoal} learned={learned} />}
           {screen==="browse" && <BrowseScreen theme={theme} openArticle={openArticle} learned={learned} browseCategory={browseCategory} setBrowseCategory={setBrowseCategory} />}
           {screen==="article" && activeArticle && <ArticleScreen theme={theme} goBack={goBack} article={activeArticle} learnedThis={learned.includes(activeArticle.id)} markLearned={markLearned} setQuizLock={setQuizLock} />}
           {screen==="challenge" && <ChallengeScreen theme={theme} go={go} dailyDone={dailyDone} reviewOn={reviewOn} reviewDue={reviewDue} reviewDone={reviewDone===TODAY} reviewFreq={reviewFreq} daysUntilReview={daysUntilReview} streak={streak} learnedCount={learnedArticles.length} />}
@@ -1486,11 +1501,10 @@ function Avatar({ theme, photo, userName, size }) {
   return <span style={{fontSize:s*0.42,fontWeight:700,color:theme.accentText,fontFamily:"'Playfair Display',serif"}}>{userName.charAt(0).toUpperCase()}</span>;
 }
 
-function HomeScreen({ theme, go, openArticle, suggested, streak, level, userName, photo, dailyDone, reviewDue, todayPick, todayPickRead, readingGoal, learned }) {
+function HomeScreen({ theme, go, openArticle, todayGoalArticles, streak, level, userName, photo, dailyDone, reviewDue, todayPick, todayPickRead, readingGoal, learned }) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  // Pick exactly readingGoal articles for today's queue (same every day via seeded shuffle)
-  const goalArticles = suggested.slice(0, readingGoal);
+  const goalArticles = todayGoalArticles;
   const goalReadCount = goalArticles.filter(a => learned.includes(a.id)).length;
   const goalComplete = goalArticles.length > 0 && goalReadCount >= goalArticles.length;
   return (
@@ -1550,7 +1564,7 @@ function HomeScreen({ theme, go, openArticle, suggested, streak, level, userName
         </div>
       ) : goalArticles.length === 0 ? (
         <div style={{textAlign:"center",padding:"40px 24px"}}>
-          <div style={{fontSize:46,marginBottom:12}}>{"\u{1F389}"}</div>
+          <div style={{fontSize:46,marginBottom:12}}>{"📚"}</div>
           <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,marginBottom:6}}>All caught up!</div>
           <div style={{fontSize:13,color:theme.sub,lineHeight:1.6}}>You have read everything. New articles arrive daily.</div>
         </div>
