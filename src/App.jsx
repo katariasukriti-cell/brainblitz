@@ -1627,6 +1627,8 @@ function ArticleScreen({ theme, goBack, article, learnedThis, markLearned, setQu
   const [progress, setProgress] = useState(0);
   const [translated, setTranslated] = useState(false);
   const [hindiParas, setHindiParas] = useState(null);
+  const [hindiTitle, setHindiTitle] = useState(null);
+  const [hindiQuiz, setHindiQuiz] = useState(null);
   const [translating, setTranslating] = useState(false);
   const [transError, setTransError] = useState(false);
   const paras = article.body.split("\n\n").filter(Boolean);
@@ -1637,13 +1639,32 @@ function ArticleScreen({ theme, goBack, article, learnedThis, markLearned, setQu
     setTranslating(true);
     setTransError(false);
     try {
-      const results = await Promise.all(paras.map(async (para) => {
-        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=hi&dt=t&q=${encodeURIComponent(para)}`;
+      async function tr(text) {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=hi&dt=t&q=${encodeURIComponent(text)}`;
         const res = await fetch(url);
         const data = await res.json();
         return data[0].map(s => s[0]).join("");
-      }));
-      setHindiParas(results);
+      }
+      const quizTexts = article.quiz.type === "mcq"
+        ? article.quiz.questions.flatMap(q => [q.q, ...q.opts])
+        : [];
+      const allTexts = [...paras, article.title, ...quizTexts];
+      const allResults = await Promise.all(allTexts.map(t => tr(t)));
+      const translatedParas = allResults.slice(0, paras.length);
+      const translatedTitle = allResults[paras.length];
+      const quizFlat = allResults.slice(paras.length + 1);
+      let qi = 0;
+      const translatedQuiz = article.quiz.type === "mcq" ? {
+        ...article.quiz,
+        questions: article.quiz.questions.map(q => ({
+          ...q,
+          q: quizFlat[qi++],
+          opts: q.opts.map(() => quizFlat[qi++]),
+        }))
+      } : article.quiz;
+      setHindiParas(translatedParas);
+      setHindiTitle(translatedTitle);
+      setHindiQuiz(translatedQuiz);
       setTranslated(true);
     } catch {
       setTransError(true);
@@ -1652,6 +1673,8 @@ function ArticleScreen({ theme, goBack, article, learnedThis, markLearned, setQu
   }
 
   const displayParas = translated && hindiParas ? hindiParas : paras;
+  const displayTitle = translated && hindiTitle ? hindiTitle : article.title;
+  const displayQuiz = translated && hindiQuiz ? hindiQuiz : article.quiz;
 
   const openQuiz = () => { setShowQuiz(true); setQuizLock(true); };
   const completeQuiz = () => { setShowQuiz(false); setQuizDone(true); setQuizLock(false); };
@@ -1681,7 +1704,7 @@ function ArticleScreen({ theme, goBack, article, learnedThis, markLearned, setQu
               <span style={{background:theme.pill,color:theme.sub,borderRadius:20,padding:"4px 12px",fontSize:11}}>{"\u{1F4D6}"} {article.readTime} min read</span>
               {learnedThis && <span style={{background:"rgba(74,112,88,0.14)",color:"#4A7058",borderRadius:20,padding:"4px 12px",fontSize:11}}>{"\u2713"} Read</span>}
             </div>
-            <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontWeight:900,lineHeight:1.25,marginBottom:14}}>{article.emoji} {article.title}</h1>
+            <h1 style={{fontFamily:translated?"'Noto Sans Devanagari',sans-serif":"'Playfair Display',serif",fontSize:24,fontWeight:900,lineHeight:1.25,marginBottom:14}}>{article.emoji} {displayTitle}</h1>
 
             <button onClick={toggleTranslate} style={{display:"flex",alignItems:"center",gap:8,background:translated?theme.accent:theme.pill,color:translated?theme.accentText:theme.text,border:"none",borderRadius:20,padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:20,opacity:translating?0.6:1}}>
               <span style={{fontSize:15}}>अ</span>
@@ -1698,25 +1721,25 @@ function ArticleScreen({ theme, goBack, article, learnedThis, markLearned, setQu
             ))}
 
             <div style={{background:theme.cardGrad,borderRadius:18,padding:"20px",marginBottom:24}}>
-              <div style={{fontSize:11,color:theme.sub,letterSpacing:2,textTransform:"uppercase",marginBottom:14}}>{"\u{1F4A1}"} Key Takeaways</div>
-              {paras.slice(0,3).map((p,i)=>(
+              <div style={{fontSize:11,color:theme.sub,letterSpacing:2,textTransform:"uppercase",marginBottom:14,fontFamily:translated?"'Noto Sans Devanagari',sans-serif":undefined}}>{"\u{1F4A1}"} {translated ? "मुख्य बातें" : "Key Takeaways"}</div>
+              {displayParas.slice(0,3).map((p,i)=>(
                 <div key={i} style={{display:"flex",gap:12,marginBottom:i<2?14:0}}>
                   <div style={{width:26,height:26,borderRadius:"50%",background:theme.accent,color:theme.accentText,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>{i+1}</div>
-                  <div style={{fontSize:14,lineHeight:1.6,opacity:0.8}}>{p.split(".")[0]}.</div>
+                  <div style={{fontSize:14,lineHeight:1.6,opacity:0.8,fontFamily:translated?"'Noto Sans Devanagari',sans-serif":undefined}}>{p.split(".")[0]}.</div>
                 </div>
               ))}
             </div>
 
-            {!learnedThis && <button onClick={()=>markLearned(article.id)} className="bb-press" style={{width:"100%",background:theme.accent,color:theme.accentText,border:"none",borderRadius:14,padding:"17px",fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:14}}>{"\u2713"} Mark as learned (+50 XP)</button>}
-            {learnedThis && <div style={{textAlign:"center",marginBottom:14,padding:"13px",background:"rgba(74,112,88,0.1)",borderRadius:12,fontSize:13,color:"#4A7058",fontWeight:500,border:"1px solid rgba(74,112,88,0.25)"}}>{"\u2713"} You have read this article</div>}
+            {!learnedThis && <button onClick={()=>markLearned(article.id)} className="bb-press" style={{width:"100%",background:theme.accent,color:theme.accentText,border:"none",borderRadius:14,padding:"17px",fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:translated?"'Noto Sans Devanagari',sans-serif":"inherit",marginBottom:14}}>{"\u2713"} {translated ? "\u092a\u0922\u093c \u0932\u093f\u092f\u093e (+50 XP)" : "Mark as learned (+50 XP)"}</button>}
+            {learnedThis && <div style={{textAlign:"center",marginBottom:14,padding:"13px",background:"rgba(74,112,88,0.1)",borderRadius:12,fontSize:13,color:"#4A7058",fontWeight:500,border:"1px solid rgba(74,112,88,0.25)",fontFamily:translated?"'Noto Sans Devanagari',sans-serif":undefined}}>{"\u2713"} {translated ? "\u0906\u092a\u0928\u0947 \u092f\u0939 \u0932\u0947\u0916 \u092a\u0922\u093c \u0932\u093f\u092f\u093e \u0939\u0948" : "You have read this article"}</div>}
 
-            {!showQuiz && !quizDone && <button onClick={openQuiz} className="bb-press" style={{width:"100%",background:"transparent",color:theme.accent,border:"1.5px solid "+theme.accent,borderRadius:14,padding:"15px",fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>{"\u{1F3AF}"} Test your understanding</button>}
-            {showQuiz && <QuizBlock theme={theme} quiz={article.quiz} onComplete={completeQuiz} />}
+            {!showQuiz && !quizDone && <button onClick={openQuiz} className="bb-press" style={{width:"100%",background:"transparent",color:theme.accent,border:"1.5px solid "+theme.accent,borderRadius:14,padding:"15px",fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:translated?"'Noto Sans Devanagari',sans-serif":"inherit"}}>{"\u{1F3AF}"} {translated ? "\u0905\u092a\u0928\u0940 \u0938\u092e\u091d \u092a\u0930\u0916\u0947\u0902" : "Test your understanding"}</button>}
+            {showQuiz && <QuizBlock theme={theme} quiz={displayQuiz} onComplete={completeQuiz} translated={translated} />}
             {quizDone && (
               <div style={{position:"relative",background:"rgba(74,112,88,0.08)",borderRadius:16,padding:"20px",textAlign:"center",border:"1px solid rgba(74,112,88,0.25)",animation:"pop 0.4s ease",overflow:"hidden"}}>
                 <Confetti colors={["#5A4E7C","#9C6B3D","#4A7058","#3E5A78","#8E4A5C"]} />
                 <div style={{fontSize:34,marginBottom:8}}>{"\u{1F389}"}</div>
-                <div style={{fontSize:16,fontWeight:600,color:"#4A7058"}}>Knowledge locked in!</div>
+                <div style={{fontSize:16,fontWeight:600,color:"#4A7058",fontFamily:translated?"'Noto Sans Devanagari',sans-serif":undefined}}>{translated ? "\u091c\u094d\u091e\u093e\u0928 \u0905\u0930\u094d\u091c\u093f\u0924 \u0939\u094b \u0917\u092f\u093e!" : "Knowledge locked in!"}</div>
               </div>
             )}
           </div>
@@ -1726,12 +1749,12 @@ function ArticleScreen({ theme, goBack, article, learnedThis, markLearned, setQu
   );
 }
 
-function QuizBlock({ theme, quiz, onComplete }) {
-  if (quiz.type === "mcq") return <MCQQuiz theme={theme} questions={quiz.questions} onComplete={onComplete} />;
+function QuizBlock({ theme, quiz, onComplete, translated }) {
+  if (quiz.type === "mcq") return <MCQQuiz theme={theme} questions={quiz.questions} onComplete={onComplete} translated={translated} />;
   return <MatchQuiz theme={theme} pairs={quiz.pairs} onComplete={onComplete} />;
 }
 
-function MCQQuiz({ theme, questions, onComplete }) {
+function MCQQuiz({ theme, questions, onComplete, translated }) {
   const [qi, setQi] = useState(0);
   const [sel, setSel] = useState(null);
   const [answered, setAnswered] = useState(false);
@@ -1744,15 +1767,16 @@ function MCQQuiz({ theme, questions, onComplete }) {
       else { setQi(qi+1); setSel(null); setAnswered(false); }
     }, 1300);
   };
+  const hindiFont = translated ? "'Noto Sans Devanagari',sans-serif" : undefined;
   return (
     <div style={{background:theme.card,borderRadius:16,padding:"20px",border:"1px solid "+theme.border,animation:"fadeUp 0.3s ease"}}>
-      <div style={{fontSize:11,color:theme.sub,letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{"\u{1F3AF}"} Quick check {qi+1}/{questions.length}</div>
-      <div style={{fontSize:15,fontWeight:500,lineHeight:1.5,marginBottom:16}}>{q.q}</div>
+      <div style={{fontSize:11,color:theme.sub,letterSpacing:2,textTransform:"uppercase",marginBottom:12,fontFamily:hindiFont}}>{"\u{1F3AF}"} {translated ? `प्रश्न ${qi+1}/${questions.length}` : `Quick check ${qi+1}/${questions.length}`}</div>
+      <div style={{fontSize:15,fontWeight:500,lineHeight:1.5,marginBottom:16,fontFamily:hindiFont}}>{q.q}</div>
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {q.opts.map((opt,i)=>{
           let bg=theme.pill, col=theme.text, bd="1px solid transparent";
           if (answered) { if (i===q.ans) { bg="rgba(0,255,136,0.1)"; col="#00FF88"; bd="1px solid rgba(0,255,136,0.4)"; } else if (i===sel) { bg="rgba(255,71,87,0.1)"; col="#FF4757"; bd="1px solid rgba(255,71,87,0.4)"; } }
-          return <button key={i} onClick={()=>pick(i)} style={{background:bg,color:col,border:bd,borderRadius:10,padding:"12px 14px",textAlign:"left",fontSize:13,fontFamily:"inherit",cursor:answered?"default":"pointer"}}>{opt}</button>;
+          return <button key={i} onClick={()=>pick(i)} style={{background:bg,color:col,border:bd,borderRadius:10,padding:"12px 14px",textAlign:"left",fontSize:13,fontFamily:hindiFont||"inherit",cursor:answered?"default":"pointer"}}>{opt}</button>;
         })}
       </div>
     </div>
