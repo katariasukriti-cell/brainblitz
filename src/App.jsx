@@ -19,6 +19,22 @@ const PASTELS = [
   { bg:"#F2EEDC", fg:"#85753D" }
 ];
 
+const TOPIC_CLUSTERS = [
+  { id:"Science & Space",      icon:"🔬", color:"#00D4FF", bg:"rgba(0,212,255,0.12)" },
+  { id:"World History",        icon:"🌍", color:"#FF9F43", bg:"rgba(255,159,67,0.12)" },
+  { id:"Indian History & Culture", icon:"🇮🇳", color:"#FF6B35", bg:"rgba(255,107,53,0.12)" },
+  { id:"Psychology & Mind",    icon:"🧠", color:"#BF5AF2", bg:"rgba(191,90,242,0.12)" },
+  { id:"Technology & AI",      icon:"🤖", color:"#00FF88", bg:"rgba(0,255,136,0.12)" },
+  { id:"Languages",            icon:"🗣️", color:"#45AAF2", bg:"rgba(69,170,242,0.12)" },
+  { id:"Nature & Environment", icon:"🌿", color:"#26D07C", bg:"rgba(38,208,124,0.12)" },
+  { id:"Economics & Money",    icon:"💰", color:"#F7B731", bg:"rgba(247,183,49,0.12)" },
+  { id:"Arts & Culture",       icon:"🎨", color:"#FF6B9D", bg:"rgba(255,107,157,0.12)" },
+  { id:"Philosophy & Ideas",   icon:"💡", color:"#ECCC68", bg:"rgba(236,204,104,0.12)" },
+  { id:"Geography & Earth",    icon:"🗺️", color:"#747D8C", bg:"rgba(116,125,140,0.12)" },
+  { id:"Food & Culture",       icon:"🍛", color:"#FF6348", bg:"rgba(255,99,72,0.12)" },
+  { id:"Current Affairs",      icon:"📰", color:"#A29BFE", bg:"rgba(162,155,254,0.12)" },
+];
+
 const CATS = [
   { id:"Science", icon:"\u{1F52C}", color:"#00D4FF", bg:"rgba(0,212,255,0.12)" },
   { id:"History", icon:"\u{1F3DB}\uFE0F", color:"#FF9F43", bg:"rgba(255,159,67,0.12)" },
@@ -1415,7 +1431,7 @@ export default function App() {
       <style>{CSS}</style>
       <div style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",display:"flex",flexDirection:"column",position:"relative"}}>
         <div style={{flex:1,overflowY:"auto",paddingBottom:isSub?0:78}}>
-          {screen==="home" && <HomeScreen theme={theme} go={go} openArticle={openArticle} suggested={suggested} streak={streak} level={level} userName={userName} photo={photo} dailyDone={dailyDone} reviewDue={reviewDue} todayPick={todayPick} todayPickRead={todayPickRead} />}
+          {screen==="home" && <HomeScreen theme={theme} go={go} openArticle={openArticle} suggested={suggested} streak={streak} level={level} userName={userName} photo={photo} dailyDone={dailyDone} reviewDue={reviewDue} todayPick={todayPick} todayPickRead={todayPickRead} readingGoal={readingGoal} learned={learned} />}
           {screen==="browse" && <BrowseScreen theme={theme} openArticle={openArticle} learned={learned} browseCategory={browseCategory} setBrowseCategory={setBrowseCategory} />}
           {screen==="article" && activeArticle && <ArticleScreen theme={theme} goBack={goBack} article={activeArticle} learnedThis={learned.includes(activeArticle.id)} markLearned={markLearned} setQuizLock={setQuizLock} />}
           {screen==="challenge" && <ChallengeScreen theme={theme} go={go} dailyDone={dailyDone} reviewOn={reviewOn} reviewDue={reviewDue} reviewDone={reviewDone===TODAY} reviewFreq={reviewFreq} daysUntilReview={daysUntilReview} streak={streak} learnedCount={learnedArticles.length} />}
@@ -1470,10 +1486,13 @@ function Avatar({ theme, photo, userName, size }) {
   return <span style={{fontSize:s*0.42,fontWeight:700,color:theme.accentText,fontFamily:"'Playfair Display',serif"}}>{userName.charAt(0).toUpperCase()}</span>;
 }
 
-function HomeScreen({ theme, go, openArticle, suggested, streak, level, userName, photo, dailyDone, reviewDue, todayPick, todayPickRead }) {
+function HomeScreen({ theme, go, openArticle, suggested, streak, level, userName, photo, dailyDone, reviewDue, todayPick, todayPickRead, readingGoal, learned }) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const rest = suggested;
+  // Pick exactly readingGoal articles for today's queue (same every day via seeded shuffle)
+  const goalArticles = suggested.slice(0, readingGoal);
+  const goalReadCount = goalArticles.filter(a => learned.includes(a.id)).length;
+  const goalComplete = goalArticles.length > 0 && goalReadCount >= goalArticles.length;
   return (
     <div style={{animation:"fadeUp 0.4s ease"}}>
       <div style={{padding:"26px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -1499,7 +1518,7 @@ function HomeScreen({ theme, go, openArticle, suggested, streak, level, userName
         </div>
       ) : (
         <div style={{margin:"18px 20px 0",borderRadius:22,padding:"22px 20px",background:theme.cardGrad,border:"1px solid "+theme.border,textAlign:"center"}}>
-          <div style={{fontSize:32,marginBottom:8}}>\u2705</div>
+          <div style={{fontSize:32,marginBottom:8}}>{"\u2705"}</div>
           <div style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:700,color:theme.text,marginBottom:4}}>Today's read complete!</div>
           <div style={{fontSize:13,color:theme.sub}}>Come back tomorrow for a new pick.</div>
         </div>
@@ -1515,19 +1534,34 @@ function HomeScreen({ theme, go, openArticle, suggested, streak, level, userName
       </div>
 
       <div style={{padding:"22px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700}}>Suggested for you</div>
+        <div>
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700}}>Today's reading</div>
+          {goalArticles.length > 0 && <div style={{fontSize:11,color:theme.sub,marginTop:2}}>{goalReadCount}/{readingGoal} article{readingGoal!==1?"s":""} read today</div>}
+        </div>
         <button onClick={()=>go("browse")} style={{background:"none",border:"none",color:theme.accent,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Browse all {"\u2192"}</button>
       </div>
 
-      {rest.length === 0 && suggested.length === 0 ? (
+      {goalComplete ? (
+        <div style={{margin:"14px 20px 0",borderRadius:22,padding:"30px 20px",background:theme.cardGrad,border:"1px solid "+theme.border,textAlign:"center"}}>
+          <div style={{fontSize:48,marginBottom:12}}>\uD83C\uDF89</div>
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:900,color:theme.text,marginBottom:8}}>Goal complete!</div>
+          <div style={{fontSize:14,color:theme.sub,lineHeight:1.6,marginBottom:16}}>You've read all {readingGoal} article{readingGoal!==1?"s":""} for today. Come back tomorrow for a fresh set.</div>
+          <button onClick={()=>go("browse")} style={{background:theme.accent,color:theme.accentText,border:"none",borderRadius:14,padding:"13px 24px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Explore more articles \u2192</button>
+        </div>
+      ) : goalArticles.length === 0 ? (
         <div style={{textAlign:"center",padding:"40px 24px"}}>
           <div style={{fontSize:46,marginBottom:12}}>{"\u{1F389}"}</div>
           <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,marginBottom:6}}>All caught up!</div>
-          <div style={{fontSize:13,color:theme.sub,lineHeight:1.6}}>You have read everything in your topics. New articles arrive daily.</div>
+          <div style={{fontSize:13,color:theme.sub,lineHeight:1.6}}>You have read everything. New articles arrive daily.</div>
         </div>
       ) : (
         <div style={{padding:"14px 20px 8px",display:"flex",flexDirection:"column",gap:14}}>
-          {rest.map((a, i) => <ArticleCard key={a.id} theme={theme} article={a} delay={i*0.05} onClick={()=>openArticle(a)} />)}
+          {goalArticles.map((a, i) => (
+            <div key={a.id} style={{position:"relative"}}>
+              <ArticleCard theme={theme} article={a} delay={i*0.05} onClick={()=>openArticle(a)} />
+              {learned.includes(a.id) && <div style={{position:"absolute",top:10,right:10,background:"rgba(0,255,136,0.2)",border:"1px solid rgba(0,255,136,0.4)",borderRadius:20,padding:"3px 10px",fontSize:10,color:"#00FF88",fontWeight:600}}>{"\u2713"} Read</div>}
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -1551,29 +1585,37 @@ function ArticleCard({ theme, article, onClick, delay }) {
 
 function BrowseScreen({ theme, openArticle, learned, browseCategory, setBrowseCategory }) {
   const [query, setQuery] = useState("");
+  const [browseMode, setBrowseMode] = useState("topics"); // "topics" | "categories"
   const q = query.trim().toLowerCase();
 
   const results = q ? ARTICLES.filter(a =>
     a.title.toLowerCase().includes(q) ||
     a.body.toLowerCase().includes(q) ||
-    a.category.toLowerCase().includes(q)
+    a.category.toLowerCase().includes(q) ||
+    (a.tags || []).some(t => t.toLowerCase().includes(q))
   ) : [];
 
   if (browseCategory && !q) {
-    const c = catOf(browseCategory);
-    const list = ARTICLES.filter(a => a.category === browseCategory);
+    // Could be a TOPIC_CLUSTER id or a CATS id
+    const tc = TOPIC_CLUSTERS.find(t => t.id === browseCategory);
+    const cc = catOf(browseCategory);
+    const isTopic = !!tc;
+    const meta = isTopic ? tc : cc;
+    const list = isTopic
+      ? ARTICLES.filter(a => (a.tags || []).includes(browseCategory))
+      : ARTICLES.filter(a => a.category === browseCategory);
     return (
       <div style={{padding:"24px 20px 20px",animation:"fadeUp 0.3s ease"}}>
-        <button onClick={()=>setBrowseCategory(null)} style={{background:theme.pill,border:"none",borderRadius:20,padding:"8px 16px",color:theme.text,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:20}}>{"\u2190"} Back to Browse</button>
+        <button onClick={()=>setBrowseCategory(null)} style={{background:theme.pill,border:"none",borderRadius:20,padding:"8px 16px",color:theme.text,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:20}}>{"\u2190 Back to Browse"}</button>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
-          <div style={{width:48,height:48,borderRadius:14,background:c.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>{c.icon}</div>
+          <div style={{width:48,height:48,borderRadius:14,background:meta.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>{meta.icon}</div>
           <div>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700}}>{c.id}</div>
+            <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700}}>{meta.id}</div>
             <div style={{fontSize:12,color:theme.sub}}>{list.length} article{list.length!==1?"s":""}</div>
           </div>
         </div>
         {list.length === 0 ? (
-          <div style={{textAlign:"center",padding:"40px 0"}}><div style={{fontSize:40,marginBottom:12}}>{c.icon}</div><div style={{fontSize:15,color:theme.sub}}>More {c.id} articles coming soon!</div></div>
+          <div style={{textAlign:"center",padding:"40px 0"}}><div style={{fontSize:40,marginBottom:12}}>{meta.icon}</div><div style={{fontSize:15,color:theme.sub}}>More articles coming soon!</div></div>
         ) : (
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
             {list.map((a,i)=>(
@@ -1591,19 +1633,27 @@ function BrowseScreen({ theme, openArticle, learned, browseCategory, setBrowseCa
   return (
     <div style={{padding:"24px 20px 20px",animation:"fadeUp 0.4s ease"}}>
       <div style={{fontFamily:"'Playfair Display',serif",fontSize:26,fontWeight:900,marginBottom:4,color:theme.text}}>Browse</div>
-      <div style={{fontSize:13,color:theme.sub,marginBottom:20}}>Search articles or explore by topic</div>
+      <div style={{fontSize:13,color:theme.sub,marginBottom:16}}>Search articles or explore by topic</div>
 
-      <div style={{position:"relative",marginBottom:q?16:24}}>
-        <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",fontSize:16,pointerEvents:"none"}}>{"\u{1F50D}"}</span>
+      <div style={{position:"relative",marginBottom:q?16:20}}>
+        <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",fontSize:16,pointerEvents:"none"}}>{"\ud83d\udd0d"}</span>
         <input value={query} onChange={(e)=>{setQuery(e.target.value); if(browseCategory) setBrowseCategory(null);}} placeholder="Search topics or keywords..." style={{width:"100%",background:theme.card,border:"1px solid "+theme.border,borderRadius:14,padding:"14px 40px 14px 42px",fontSize:14,fontFamily:"'DM Sans',sans-serif",color:theme.text,outline:"none",boxSizing:"border-box"}} />
         {q && <button onClick={()=>setQuery("")} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:15,color:theme.sub}}>{"\u2715"}</button>}
       </div>
+
+      {!q && (
+        <div style={{display:"flex",gap:8,marginBottom:20}}>
+          {["topics","categories"].map(m=>(
+            <button key={m} onClick={()=>setBrowseMode(m)} style={{padding:"8px 18px",borderRadius:20,border:"none",background:browseMode===m?theme.accent:theme.pill,color:browseMode===m?theme.accentText:theme.text,fontSize:13,fontWeight:browseMode===m?600:400,cursor:"pointer",fontFamily:"inherit",textTransform:"capitalize"}}>{m}</button>
+          ))}
+        </div>
+      )}
 
       {q ? (
         <div>
           <div style={{fontSize:12,color:theme.sub,marginBottom:14}}>{results.length>0?(results.length+" result"+(results.length!==1?"s":"")+" for \""+query+"\""):("No results for \""+query+"\"")}</div>
           {results.length === 0 ? (
-            <div style={{textAlign:"center",padding:"40px 20px"}}><div style={{fontSize:46,marginBottom:12}}>{"\u{1F50D}"}</div><div style={{fontSize:15,fontWeight:600,marginBottom:6}}>Nothing found</div><div style={{fontSize:13,color:theme.sub}}>Try a different keyword, topic, or name.</div></div>
+            <div style={{textAlign:"center",padding:"40px 20px"}}><div style={{fontSize:46,marginBottom:12}}>{"\ud83d\udd0d"}</div><div style={{fontSize:15,fontWeight:600,marginBottom:6}}>Nothing found</div><div style={{fontSize:13,color:theme.sub}}>Try a different keyword, topic, or name.</div></div>
           ) : (
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
               {results.map((a,i)=>{
@@ -1629,6 +1679,19 @@ function BrowseScreen({ theme, openArticle, learned, browseCategory, setBrowseCa
               })}
             </div>
           )}
+        </div>
+      ) : browseMode === "topics" ? (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {TOPIC_CLUSTERS.map((c,i)=>{
+            const count = ARTICLES.filter(a => (a.tags||[]).includes(c.id)).length;
+            return (
+              <div key={c.id} onClick={()=>setBrowseCategory(c.id)} style={{background:theme.card,border:"1px solid "+theme.border,borderRadius:16,padding:"16px",cursor:"pointer",animation:"fadeUp 0.3s "+(i*0.03)+"s ease both"}}>
+                <div style={{width:40,height:40,borderRadius:12,background:c.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,marginBottom:10}}>{c.icon}</div>
+                <div style={{fontSize:13,fontWeight:600,marginBottom:3,lineHeight:1.3}}>{c.id}</div>
+                <div style={{fontSize:11,color:theme.sub}}>{count} article{count!==1?"s":""}</div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
