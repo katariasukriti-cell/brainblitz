@@ -1557,10 +1557,10 @@ function HomeScreen({ theme, go, openArticle, todayGoalArticles, streak, level, 
 
       {goalComplete ? (
         <div style={{margin:"14px 20px 0",borderRadius:22,padding:"34px 24px",background:theme.cardGrad,border:"1px solid "+theme.border,textAlign:"center"}}>
-          <div style={{fontSize:52,marginBottom:14}}>\uD83C\uDF89</div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:900,color:theme.text,marginBottom:8}}>Goal complete!</div>
+          <div style={{fontSize:52,marginBottom:14}}>{"🧠"}</div>
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:900,color:theme.text,marginBottom:8}}>Brain fully charged!</div>
           <div style={{fontSize:14,color:theme.sub,lineHeight:1.7,marginBottom:20}}>{"You crushed your "+readingGoal+"-article goal for today. Come back tomorrow for a fresh batch."}</div>
-          <button onClick={()=>go("browse")} style={{background:theme.accent,color:theme.accentText,border:"none",borderRadius:14,padding:"13px 24px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Explore more articles \u2192</button>
+          <button onClick={()=>go("browse")} style={{background:theme.accent,color:theme.accentText,border:"none",borderRadius:14,padding:"13px 24px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Explore more articles →</button>
         </div>
       ) : goalArticles.length === 0 ? (
         <div style={{textAlign:"center",padding:"40px 24px"}}>
