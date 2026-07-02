@@ -321,12 +321,15 @@ jobs:
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Basic ${REST_KEY}`
+                'Authorization': `Key ${REST_KEY}`
               },
               body: JSON.stringify({ app_id: APP_ID, ...payload })
             });
             const result = await response.json();
-            console.log('Sent:', payload.headings?.en, '| Result:', JSON.stringify(result).slice(0, 120));
+            console.log('Sent:', payload.headings?.en, '| Status:', response.status, '| Result:', JSON.stringify(result).slice(0, 200));
+            if (result.errors && result.errors.length > 0) {
+              console.error('OneSignal error:', JSON.stringify(result.errors));
+            }
             return result;
           }
 
@@ -364,7 +367,7 @@ jobs:
 
             if (sydneyHour === 9 && sydneyMinute < 60) {
               await sendNotification({
-                included_segments: ['Total Subscriptions'],
+                included_segments: ['Subscribed Users'],
                 headings: { en: '⚡ Daily Challenge Ready' },
                 contents: { en: "Your BrainBlitz challenge for today is waiting — can you beat yesterday's score?" },
                 url: 'https://brainblitz-gules.vercel.app'
@@ -377,7 +380,7 @@ jobs:
             if (sydneyHour === 9 && sydneyMinute < 60) {
               await sendNotification({
                 filters: [
-                  { field: 'last_session', relation: '>', value: '13', unit: 'days' }
+                  { field: 'last_session', relation: '>', hours_ago: '336' }
                 ],
                 headings: { en: '👋 We miss you on BrainBlitz' },
                 contents: { en: "It's been a while! Your review quiz is waiting and there are new facts to discover." },
@@ -387,6 +390,6 @@ jobs:
             }
           }
 
-          main().catch(console.error);
+          main().catch(e => { console.error(e); process.exit(1); });
 
           EOF
