@@ -3235,7 +3235,7 @@ export default function App() {
   })();
 
   const shared = { theme, go, goBack, streak, xp, level, userName, photo, learned, learnedArticles };
-  const isSub = ["article", "daily", "review", "learnings", "personalise"].includes(screen);
+  const isSub = ["article", "daily", "review", "learnings", "personalise", "connections", "factorfiction"].includes(screen);
 
   const NAV = [
     { id:"home", icon:"home", label:"Home" },
@@ -3253,6 +3253,8 @@ export default function App() {
           {screen==="browse" && <BrowseScreen theme={theme} openArticle={openArticle} learned={learned} browseCategory={browseCategory} setBrowseCategory={setBrowseCategory} />}
           {screen==="article" && activeArticle && <ArticleScreen theme={theme} goBack={goBack} article={activeArticle} learnedThis={learned.includes(activeArticle.id)} markLearned={markLearned} setQuizLock={setQuizLock} />}
           {screen==="challenge" && <ChallengeScreen theme={theme} go={go} dailyDone={dailyDone} reviewOn={reviewOn} reviewDue={reviewDue} reviewDone={reviewDone===TODAY} reviewFreq={reviewFreq} daysUntilReview={daysUntilReview} streak={streak} learnedCount={learnedArticles.length} />}
+          {screen==="connections" && <ConnectionsGame theme={theme} goBack={()=>go("challenge")} />}
+          {screen==="factorfiction" && <FactOrFictionGame theme={theme} goBack={()=>go("challenge")} />}
           {screen==="daily" && <DailyQuiz theme={theme} go={go} dailyDone={dailyDone} onFinish={finishDaily} streak={streak} setQuizLock={setQuizLock} />}
           {screen==="review" && <ReviewQuiz theme={theme} go={go} questions={reviewQuestions} onFinish={finishReview} setQuizLock={setQuizLock} />}
           {screen==="progress" && <ProgressScreen theme={theme} go={go} xp={xp} level={level} streak={streak} learnedArticles={learnedArticles} quizScores={quizScores} />}
@@ -3262,7 +3264,7 @@ export default function App() {
         {!isSub && (
           <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:theme.nav,borderTop:"1px solid "+theme.border,display:"flex",zIndex:100}}>
             {NAV.map(t => {
-              const active = screen===t.id || (t.id==="challenge" && ["daily","review"].includes(screen));
+              const active = screen===t.id || (t.id==="challenge" && ["daily","review","connections","factorfiction"].includes(screen));
               return (
                 <button key={t.id} onClick={()=>go(t.id)} style={{flex:1,padding:"12px 0 16px",background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,fontFamily:"'DM Sans',sans-serif",position:"relative"}}>
                   <span style={{opacity:active?1:0.45,display:"flex"}}><NavIcon name={t.icon} color={active?theme.text:theme.sub} active={active} /></span>
@@ -3535,7 +3537,30 @@ function ArticleScreen({ theme, goBack, article, learnedThis, markLearned, setQu
   const [hindiQuiz, setHindiQuiz] = useState(null);
   const [translating, setTranslating] = useState(false);
   const [transError, setTransError] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const paras = article.body.split("\n\n").filter(Boolean);
+
+  useEffect(() => { return () => { window.speechSynthesis?.cancel(); }; }, []);
+
+  function toggleAudio() {
+    if (!window.speechSynthesis) return;
+    if (speaking) {
+      window.speechSynthesis.cancel();
+      setSpeaking(false);
+      return;
+    }
+    const displayParasNow = (translated && hindiParas) ? hindiParas : paras;
+    const lang = translated ? "hi-IN" : "en-US";
+    const text = displayParasNow.join(". ");
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = lang;
+    utt.rate = 0.92;
+    utt.onend = () => setSpeaking(false);
+    utt.onerror = () => setSpeaking(false);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utt);
+    setSpeaking(true);
+  }
 
   async function toggleTranslate() {
     if (translated) { setTranslated(false); return; }
@@ -3610,10 +3635,16 @@ function ArticleScreen({ theme, goBack, article, learnedThis, markLearned, setQu
             </div>
             <h1 style={{fontFamily:translated?"'Noto Sans Devanagari',sans-serif":"'Playfair Display',serif",fontSize:24,fontWeight:900,lineHeight:1.25,marginBottom:14}}>{article.emoji} {displayTitle}</h1>
 
-            <button onClick={toggleTranslate} style={{display:"flex",alignItems:"center",gap:8,background:translated?theme.accent:theme.pill,color:translated?theme.accentText:theme.text,border:"none",borderRadius:20,padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:20,opacity:translating?0.6:1}}>
-              <span style={{fontSize:15}}>अ</span>
-              {translating ? "Translating…" : translated ? "Back to English" : "Translate to Hindi"}
-            </button>
+            <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+              <button onClick={toggleTranslate} style={{display:"flex",alignItems:"center",gap:8,background:translated?theme.accent:theme.pill,color:translated?theme.accentText:theme.text,border:"none",borderRadius:20,padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:translating?0.6:1}}>
+                <span style={{fontSize:15}}>अ</span>
+                {translating ? "Translating…" : translated ? "Back to English" : "Translate to Hindi"}
+              </button>
+              <button onClick={toggleAudio} style={{display:"flex",alignItems:"center",gap:8,background:speaking?theme.accent:theme.pill,color:speaking?theme.accentText:theme.text,border:"none",borderRadius:20,padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                <span style={{fontSize:15}}>{speaking ? "⏹" : "▶"}</span>
+                {speaking ? "Stop audio" : "Listen"}
+              </button>
+            </div>
             {transError && <div style={{fontSize:12,color:"#E74C3C",marginBottom:12}}>Translation failed — please check your connection and try again.</div>}
             {translated && <div style={{fontSize:11,color:theme.sub,marginBottom:16,fontStyle:"italic"}}>Translated by Google. Accuracy may vary.</div>}
 
@@ -3722,6 +3753,410 @@ function MatchQuiz({ theme, pairs, onComplete }) {
   );
 }
 
+// ─── CONNECTIONS GAME ────────────────────────────────────────────────────────
+const CONNECTIONS_PUZZLES = [
+  { id:1, title:"Ancient Wonders", groups:[
+    { label:"Rivers of the world", colour:"#10B981", emoji:"🌊", items:["Amazon","Nile","Ganges","Yangtze"] },
+    { label:"Nobel Peace Prize winners", colour:"#3B82F6", emoji:"☮️", items:["Gandhi","Mandela","Malala","Mother Teresa"] },
+    { label:"Planets in our solar system", colour:"#8B5CF6", emoji:"🪐", items:["Venus","Saturn","Uranus","Neptune"] },
+    { label:"Currencies", colour:"#F59E0B", emoji:"💰", items:["Yen","Rupee","Krona","Real"] },
+  ]},
+  { id:2, title:"Science & Discovery", groups:[
+    { label:"Things named after scientists", colour:"#10B981", emoji:"🔬", items:["Pasteurisation","Bunsen burner","Fahrenheit","Watt"] },
+    { label:"Parts of a cell", colour:"#3B82F6", emoji:"🧫", items:["Nucleus","Mitochondria","Ribosome","Vacuole"] },
+    { label:"Nobel Prize categories", colour:"#8B5CF6", emoji:"🏆", items:["Physics","Chemistry","Literature","Peace"] },
+    { label:"Elements on the periodic table", colour:"#F59E0B", emoji:"⚗️", items:["Neon","Cobalt","Argon","Xenon"] },
+  ]},
+  { id:3, title:"World Capitals", groups:[
+    { label:"Capitals of South America", colour:"#10B981", emoji:"🌎", items:["Brasília","Lima","Buenos Aires","Bogotá"] },
+    { label:"Capitals of Africa", colour:"#3B82F6", emoji:"🌍", items:["Nairobi","Accra","Dakar","Addis Ababa"] },
+    { label:"Capitals of Southeast Asia", colour:"#8B5CF6", emoji:"🌏", items:["Bangkok","Jakarta","Manila","Hanoi"] },
+    { label:"Capitals of Scandinavia & Nordic", colour:"#F59E0B", emoji:"❄️", items:["Oslo","Stockholm","Helsinki","Reykjavik"] },
+  ]},
+  { id:4, title:"Arts & Culture", groups:[
+    { label:"Works by Shakespeare", colour:"#10B981", emoji:"📜", items:["Othello","Macbeth","Hamlet","Prospero"] },
+    { label:"Impressionist painters", colour:"#3B82F6", emoji:"🎨", items:["Monet","Renoir","Degas","Pissarro"] },
+    { label:"Architectural styles", colour:"#8B5CF6", emoji:"🏛️", items:["Baroque","Brutalism","Gothic","Modernism"] },
+    { label:"Musical terms", colour:"#F59E0B", emoji:"🎵", items:["Adagio","Fortissimo","Staccato","Legato"] },
+  ]},
+  { id:5, title:"History & Empires", groups:[
+    { label:"Mughal Emperors", colour:"#10B981", emoji:"🏰", items:["Babur","Akbar","Aurangzeb","Shah Jahan"] },
+    { label:"Ancient Greek philosophers", colour:"#3B82F6", emoji:"🏺", items:["Socrates","Plato","Aristotle","Epicurus"] },
+    { label:"Causes of WWI (M.A.I.N.)", colour:"#8B5CF6", emoji:"⚔️", items:["Militarism","Alliances","Imperialism","Nationalism"] },
+    { label:"French Revolution key terms", colour:"#F59E0B", emoji:"🗽", items:["Guillotine","Bastille","Jacobins","Enlightenment"] },
+  ]},
+  { id:6, title:"The Natural World", groups:[
+    { label:"Australian animals", colour:"#10B981", emoji:"🦘", items:["Quokka","Cassowary","Echidna","Wombat"] },
+    { label:"Types of cloud", colour:"#3B82F6", emoji:"☁️", items:["Cumulus","Cirrus","Stratus","Nimbus"] },
+    { label:"Biomes", colour:"#8B5CF6", emoji:"🌿", items:["Tundra","Savannah","Taiga","Chaparral"] },
+    { label:"Parts of a flower", colour:"#F59E0B", emoji:"🌸", items:["Stamen","Pistil","Sepal","Anther"] },
+  ]},
+  { id:7, title:"Tech & Innovation", groups:[
+    { label:"Programming languages", colour:"#10B981", emoji:"💻", items:["Python","Rust","Kotlin","Swift"] },
+    { label:"Tech companies founded in garages", colour:"#3B82F6", emoji:"🏠", items:["Apple","Google","Amazon","HP"] },
+    { label:"Types of AI system", colour:"#8B5CF6", emoji:"🤖", items:["Neural network","Transformer","Diffusion model","Decision tree"] },
+    { label:"Social media platforms launched before 2010", colour:"#F59E0B", emoji:"📱", items:["Facebook","Twitter","YouTube","LinkedIn"] },
+  ]},
+  { id:8, title:"Indian History & Culture", groups:[
+    { label:"Ancient Indian texts", colour:"#10B981", emoji:"📿", items:["Rigveda","Upanishads","Mahabharata","Arthashastra"] },
+    { label:"Classical Indian dance forms", colour:"#3B82F6", emoji:"💃", items:["Bharatanatyam","Kathak","Odissi","Manipuri"] },
+    { label:"Indian independence movement figures", colour:"#8B5CF6", emoji:"🇮🇳", items:["Gandhi","Nehru","Ambedkar","Bose"] },
+    { label:"UNESCO World Heritage Sites in India", colour:"#F59E0B", emoji:"🏛️", items:["Taj Mahal","Ajanta Caves","Hampi","Qutub Minar"] },
+  ]},
+  { id:9, title:"Food & the World", groups:[
+    { label:"Spices originating in South Asia", colour:"#10B981", emoji:"🌶️", items:["Turmeric","Cardamom","Cloves","Black pepper"] },
+    { label:"Foods introduced via Columbian Exchange", colour:"#3B82F6", emoji:"🌽", items:["Potato","Tomato","Chocolate","Chilli"] },
+    { label:"Traditional Japanese dishes", colour:"#8B5CF6", emoji:"🍣", items:["Ramen","Tempura","Miso soup","Sashimi"] },
+    { label:"Ingredients in a classic French mirepoix", colour:"#F59E0B", emoji:"🧅", items:["Onion","Carrot","Celery","Leek"] },
+  ]},
+  { id:10, title:"Psychology & the Mind", groups:[
+    { label:"Freud's personality structures", colour:"#10B981", emoji:"🧠", items:["Id","Ego","Superego","Libido"] },
+    { label:"Types of memory", colour:"#3B82F6", emoji:"💭", items:["Semantic","Episodic","Procedural","Working"] },
+    { label:"Piaget's cognitive stages", colour:"#8B5CF6", emoji:"🧒", items:["Sensorimotor","Preoperational","Concrete operational","Formal operational"] },
+    { label:"Big Five personality traits", colour:"#F59E0B", emoji:"🎭", items:["Openness","Conscientiousness","Extraversion","Neuroticism"] },
+  ]},
+];
+
+function shuffleArr(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+function ConnectionsGame({ theme, goBack }) {
+  const [screen, setScreen] = useState("pick");
+  const [puzzle, setPuzzle] = useState(null);
+  const [tiles, setTiles] = useState([]);
+  const [selected, setSelected] = useState([]);
+  const [solved, setSolved] = useState([]);
+  const [mistakes, setMistakes] = useState(0);
+  const [shakeTiles, setShakeTiles] = useState([]);
+  const [hint, setHint] = useState(null);
+  const [won, setWon] = useState(false);
+  const MAX_MISTAKES = 4;
+
+  function loadPuzzle(p) {
+    const allItems = shuffleArr(p.groups.flatMap((g, gi) => g.items.map(item => ({ item, groupIdx: gi }))));
+    setPuzzle(p); setTiles(allItems); setSelected([]); setSolved([]); setMistakes(0); setShakeTiles([]); setHint(null); setWon(false); setScreen("play");
+  }
+
+  function toggleTile(idx) {
+    if (shakeTiles.length) return;
+    setSelected(prev => prev.includes(idx) ? prev.filter(i=>i!==idx) : prev.length>=4 ? prev : [...prev,idx]);
+    setHint(null);
+  }
+
+  function shuffleTiles() {
+    setTiles(prev => {
+      const solvedSet = new Set(solved.flatMap(s=>s.indices));
+      const unsolved = [], positions = [];
+      prev.forEach((t,i)=>{ if(!solvedSet.has(i)){unsolved.push(t);positions.push(i);} });
+      const sh = shuffleArr(unsolved); const next=[...prev];
+      positions.forEach((pos,i)=>{next[pos]=sh[i];}); return next;
+    });
+    setSelected([]);
+  }
+
+  function submit() {
+    if (selected.length!==4) return;
+    const gIdxs = selected.map(i=>tiles[i].groupIdx);
+    const allSame = gIdxs.every(g=>g===gIdxs[0]);
+    if (allSame) {
+      const gi = gIdxs[0]; const group = puzzle.groups[gi];
+      const ns = [...solved, {group, indices:selected}];
+      setSolved(ns); setSelected([]); setHint({msg:`✅ "${group.label}" — well spotted!`, type:"correct"});
+      if (ns.length===4) setTimeout(()=>{setWon(true);setScreen("end");},800);
+    } else {
+      const counts={}; gIdxs.forEach(g=>{counts[g]=(counts[g]||0)+1;});
+      const isOneAway = Math.max(...Object.values(counts))===3;
+      setMistakes(m => {
+        const next=m+1;
+        if(next>=MAX_MISTAKES){setHint({msg:"No more guesses — revealing answers.",type:"wrong"});setTimeout(()=>{setWon(false);setScreen("end");},900);}
+        else setHint(isOneAway?{msg:"🔥 One away! Three from the same group.",type:"close"}:{msg:"Not quite — try a different combination.",type:"wrong"});
+        return next;
+      });
+      setShakeTiles([...selected]); setTimeout(()=>setShakeTiles([]),500); setSelected([]);
+    }
+  }
+
+  const C = { bg:"#0D0D1A", card:"#1A1A35", border:"#2A2A4A", violet:"#7C3AED", violetLt:"#9B6DFF", textPri:"#F0F0FF", textSec:"#9090B8", textMut:"#5A5A7A", amber:"#F59E0B" };
+
+  const hdr = (
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+      <button onClick={screen==="pick"?goBack:()=>setScreen("pick")} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:"50%",width:36,height:36,cursor:"pointer",fontSize:16,color:C.textPri,display:"flex",alignItems:"center",justifyContent:"center"}}>{"←"}</button>
+      <div style={{width:36,height:36,background:"linear-gradient(135deg,#7C3AED,#4F46E5)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>{"🔗"}</div>
+      <div>
+        <div style={{fontSize:18,fontWeight:700,color:C.textPri}}>Connections</div>
+        <div style={{fontSize:11,color:C.textSec}}>{screen==="pick"?"Group four items that share something":puzzle?.title}</div>
+      </div>
+    </div>
+  );
+
+  if (screen==="pick") return (
+    <div style={{minHeight:"100vh",background:C.bg,padding:"24px 16px 48px",fontFamily:"'Space Grotesk',system-ui,sans-serif"}}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap');`}</style>
+      {hdr}
+      <div style={{fontSize:13,color:C.textMut,marginBottom:16}}>{CONNECTIONS_PUZZLES.length} puzzles available</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        {CONNECTIONS_PUZZLES.map(p=>(
+          <button key={p.id} onClick={()=>loadPuzzle(p)} style={{padding:14,borderRadius:14,border:"1.5px solid "+C.border,background:C.card,color:C.textSec,fontFamily:"inherit",fontSize:13,fontWeight:600,cursor:"pointer",textAlign:"left",transition:"all 0.15s"}}>
+            <div style={{fontSize:18,marginBottom:6}}>{p.groups.map(g=>g.emoji).join(" ")}</div>
+            <div style={{fontWeight:700,color:C.textPri,marginBottom:2}}>{p.title}</div>
+            <div style={{fontSize:10,color:C.textMut}}>Puzzle #{p.id}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (screen==="end") {
+    const allSolved = won ? solved : puzzle.groups.map((group,gi)=>({group,indices:tiles.reduce((acc,t,i)=>t.groupIdx===gi?[...acc,i]:acc,[])}));
+    return (
+      <div style={{minHeight:"100vh",background:C.bg,padding:"24px 16px 48px",fontFamily:"'Space Grotesk',system-ui,sans-serif"}}>
+        {hdr}
+        <div style={{textAlign:"center"}}>
+          <div style={{fontSize:60,marginBottom:12}}>{won?"🏆":"🧩"}</div>
+          <div style={{fontSize:26,fontWeight:700,color:C.textPri,marginBottom:8}}>{won?"Solved it!":"Better luck next time"}</div>
+          <div style={{fontSize:14,color:C.textSec,marginBottom:24,lineHeight:1.5}}>{won?`Found all four groups${mistakes===0?" without a single mistake!":" with "+mistakes+" mistake"+(mistakes!==1?"s":".")}`:`You got ${solved.length} of 4 groups.`}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:24}}>
+            {puzzle.groups.map((group,gi)=>(
+              <div key={gi} style={{borderRadius:14,padding:"14px 18px",background:group.colour+"22",border:"1px solid "+group.colour+"55"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                  <span style={{fontSize:18}}>{group.emoji}</span>
+                  <span style={{fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",color:group.colour}}>{group.label}</span>
+                </div>
+                <div style={{fontSize:13,color:group.colour,opacity:0.85}}>{group.items.join(" · ")}</div>
+              </div>
+            ))}
+          </div>
+          <button onClick={()=>loadPuzzle(puzzle)} style={{width:"100%",padding:16,background:"linear-gradient(135deg,#7C3AED,#4F46E5)",color:"#fff",border:"none",borderRadius:14,fontFamily:"inherit",fontSize:15,fontWeight:700,cursor:"pointer",marginBottom:10}}>Play Again</button>
+          <button onClick={()=>setScreen("pick")} style={{width:"100%",padding:14,background:"transparent",color:C.textSec,border:"1.5px solid "+C.border,borderRadius:14,fontFamily:"inherit",fontSize:14,fontWeight:600,cursor:"pointer"}}>Try Another Puzzle</button>
+        </div>
+      </div>
+    );
+  }
+
+  const solvedIdxs = new Set(solved.flatMap(s=>s.indices));
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,padding:"24px 16px 48px",fontFamily:"'Space Grotesk',system-ui,sans-serif"}}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap'); @keyframes conShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}} @keyframes conPop{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}}`}</style>
+      {hdr}
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+        <span style={{fontSize:12,color:C.textSec,fontWeight:500}}>Mistakes remaining:</span>
+        <div style={{display:"flex",gap:6}}>
+          {Array.from({length:MAX_MISTAKES}).map((_,i)=>(
+            <div key={i} style={{width:12,height:12,borderRadius:"50%",background:i>=MAX_MISTAKES-mistakes?C.border:C.violet,transition:"background 0.3s"}} />
+          ))}
+        </div>
+      </div>
+      {solved.map((s,i)=>(
+        <div key={i} style={{borderRadius:14,padding:"14px 18px",marginBottom:8,background:s.group.colour+"22",border:"1px solid "+s.group.colour+"55",animation:"conPop 0.35s ease"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+            <span style={{fontSize:18}}>{s.group.emoji}</span>
+            <span style={{fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",color:s.group.colour}}>{s.group.label}</span>
+          </div>
+          <div style={{fontSize:13,color:s.group.colour,opacity:0.85}}>{s.group.items.join(" · ")}</div>
+        </div>
+      ))}
+      {hint && hint.type!=="correct" && (
+        <div style={{width:"100%",textAlign:"center",fontSize:13,padding:"10px",background:C.card,border:"1px solid "+(hint.type==="wrong"?"rgba(239,68,68,0.4)":"rgba(245,158,11,0.4)"),borderRadius:10,marginBottom:12,color:hint.type==="wrong"?"#EF4444":C.amber}}>
+          {hint.msg}
+        </div>
+      )}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:16}}>
+        {tiles.map((t,idx)=>{
+          if(solvedIdxs.has(idx)) return null;
+          const isSel=selected.includes(idx); const isShaking=shakeTiles.includes(idx);
+          return (
+            <button key={idx} onClick={()=>toggleTile(idx)} disabled={!!shakeTiles.length}
+              style={{aspectRatio:"1",borderRadius:12,border:"2px solid "+(isSel?"#9B6DFF":C.border),background:isSel?"rgba(124,58,237,0.25)":C.card,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.textPri,textAlign:"center",padding:"6px 4px",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1.25,animation:isShaking?"conShake 0.4s ease":undefined,transform:isSel?"translateY(-2px)":"none",transition:"all 0.15s",boxShadow:isSel?"0 4px 16px rgba(124,58,237,0.25)":"none"}}>
+              {t.item}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{display:"flex",gap:8,marginBottom:12}}>
+        <button onClick={()=>setSelected([])} style={{flex:1,padding:"13px 8px",borderRadius:12,border:"1.5px solid "+C.border,background:C.card,color:C.textSec,fontFamily:"inherit",fontSize:13,fontWeight:600,cursor:"pointer"}}>Deselect all</button>
+        <button onClick={shuffleTiles} style={{flex:1,padding:"13px 8px",borderRadius:12,border:"1.5px solid "+C.border,background:C.card,color:C.textSec,fontFamily:"inherit",fontSize:13,fontWeight:600,cursor:"pointer"}}>Shuffle</button>
+        <button onClick={submit} disabled={selected.length!==4} style={{flex:1,padding:"13px 8px",borderRadius:12,border:"none",background:selected.length===4?"linear-gradient(135deg,#7C3AED,#4F46E5)":"#1A1A35",color:selected.length===4?"#fff":C.textMut,fontFamily:"inherit",fontSize:13,fontWeight:600,cursor:selected.length===4?"pointer":"default",opacity:selected.length!==4?0.35:1}}>Submit</button>
+      </div>
+      <div style={{fontSize:12,color:C.textMut,textAlign:"center"}}>Select 4 items that share a hidden connection</div>
+    </div>
+  );
+}
+
+// ─── FACT OR FICTION GAME ────────────────────────────────────────────────────
+const FOF_FACTS = [
+  {statement:"A teaspoon of healthy topsoil contains more living organisms than there are humans on Earth.",verdict:true,explanation:"A single teaspoon of healthy topsoil harbours billions of bacteria, fungi, nematodes, and other organisms — far exceeding Earth's human population of 8 billion.",category:"Science",emoji:"🌱"},
+  {statement:"The human body contains more bacterial cells than human cells.",verdict:true,explanation:"Recent estimates put the ratio at roughly 1:1, but bacteria are far more numerous by count in the gut. We are, in a real sense, more microbe than human.",category:"Science",emoji:"🧫"},
+  {statement:"Sharks are older than trees.",verdict:true,explanation:"Sharks have existed for around 450 million years. Trees only evolved approximately 350 million years ago — meaning sharks swam the oceans before forests existed.",category:"Science",emoji:"🦈"},
+  {statement:"DNA is the same molecule in every organism on Earth, from bacteria to blue whales.",verdict:true,explanation:"All known life uses DNA as its genetic material and the same genetic code — powerful evidence for a single common ancestor.",category:"Science",emoji:"🧬"},
+  {statement:"Lightning is hotter than the Sun's surface.",verdict:true,explanation:"A lightning bolt reaches approximately 30,000 Kelvin — five times hotter than the Sun's surface temperature of around 5,778 Kelvin.",category:"Science",emoji:"⚡"},
+  {statement:"The Great Wall of China is visible from space with the naked eye.",verdict:false,explanation:"This is one of history's most persistent myths. The Wall is too narrow (roughly 5–8 metres wide) to be seen from orbit. Even Chinese astronaut Yang Liwei confirmed he couldn't see it.",category:"Science",emoji:"🏯"},
+  {statement:"Water always boils at 100°C regardless of altitude.",verdict:false,explanation:"Water boils at lower temperatures at higher altitudes because atmospheric pressure decreases. At the summit of Mount Everest, water boils at approximately 70°C.",category:"Science",emoji:"💧"},
+  {statement:"Humans have five senses.",verdict:false,explanation:"Beyond the classic five, humans also have proprioception (body position), thermoception (temperature), vestibular sense (balance), interoception (internal body states), and others.",category:"Science",emoji:"👁️"},
+  {statement:"The universe is approximately 13.8 billion years old.",verdict:true,explanation:"Based on measurements of the cosmic microwave background and the rate of the universe's expansion, scientists estimate the universe formed around 13.8 billion years ago.",category:"Space",emoji:"🌌"},
+  {statement:"Napoleon Bonaparte was unusually short for his era.",verdict:false,explanation:"Napoleon stood approximately 5'7\" (170 cm) — average for a Frenchman of his time. The myth arose partly from British propaganda and a confusion between French and English inches.",category:"History",emoji:"👑"},
+  {statement:"Cleopatra lived closer in time to the Moon landing than to the construction of the Great Pyramid.",verdict:true,explanation:"The Great Pyramid was built around 2560 BC. Cleopatra lived around 30 BC — about 2,500 years after the pyramid and only 2,000 years before the 1969 Moon landing.",category:"History",emoji:"🏛️"},
+  {statement:"The Black Death killed roughly a third of Europe's population in the 14th century.",verdict:true,explanation:"Estimates range from 30% to 60% of Europe's population dying between 1347 and 1351 — the deadliest pandemic in recorded human history.",category:"History",emoji:"🐀"},
+  {statement:"Einstein failed mathematics at school.",verdict:false,explanation:"Einstein excelled at mathematics from a young age, mastering calculus by 15. The myth arose from a misunderstanding of Swiss grading scales.",category:"History",emoji:"🧠"},
+  {statement:"Octopuses have three hearts.",verdict:true,explanation:"Octopuses have three hearts: two pump blood through the gills, and one pumps it through the body. Their blood is blue because it contains copper-based haemocyanin.",category:"Nature",emoji:"🐙"},
+  {statement:"Goldfish have a memory span of only three seconds.",verdict:false,explanation:"This is a persistent myth. Research shows goldfish can remember things for months. They can be trained to press levers, navigate mazes, and recognise their owners.",category:"Nature",emoji:"🐠"},
+  {statement:"Bats are blind.",verdict:false,explanation:"No bat species is blind. While many use echolocation in darkness, all bats have functional eyes and many have excellent vision.",category:"Nature",emoji:"🦇"},
+  {statement:"Honeybees die after they sting you.",verdict:true,explanation:"When a honeybee stings a mammal, its barbed stinger is torn from its body as it pulls away — causing the bee to die. Wasps and bumblebees can sting multiple times.",category:"Nature",emoji:"🐝"},
+  {statement:"A day on Venus is longer than a year on Venus.",verdict:true,explanation:"Venus rotates so slowly (243 Earth days per rotation) that a Venusian day is longer than a Venusian year (225 Earth days to orbit the Sun).",category:"Space",emoji:"🪐"},
+  {statement:"Australia is wider than the Moon.",verdict:true,explanation:"Australia measures approximately 4,000 km east to west. The Moon's diameter is only about 3,474 km — making Australia wider than the Moon.",category:"Geography",emoji:"🌏"},
+  {statement:"Russia shares a border with the United States.",verdict:true,explanation:"Russia and the USA are separated by only about 3.8 km at their closest point — the Diomede Islands in the Bering Strait.",category:"Geography",emoji:"🗺️"},
+  {statement:"Iceland is covered in ice and Greenland is green.",verdict:false,explanation:"It's largely the reverse. Iceland has lush green landscapes. Greenland is covered by a massive ice sheet — the second largest on Earth.",category:"Geography",emoji:"🧊"},
+  {statement:"Shakespeare invented over 1,700 words we still use today.",verdict:true,explanation:"Shakespeare is credited with coining or first recording words including 'bedroom', 'lonely', 'generous', 'obscene', and 'luggage'.",category:"Literature",emoji:"📜"},
+  {statement:"The Mona Lisa has no eyebrows.",verdict:true,explanation:"Leonardo da Vinci never finished the eyebrows, or they may have faded. High-resolution scans suggest very faint traces once existed.",category:"Art & Culture",emoji:"🖼️"},
+  {statement:"Beethoven was completely deaf when he composed his Ninth Symphony.",verdict:true,explanation:"Beethoven had lost virtually all hearing by the time he completed the Ninth Symphony in 1824. He reportedly had to be turned around to see the applauding audience because he could not hear them.",category:"Music",emoji:"🎵"},
+  {statement:"Honey never expires.",verdict:true,explanation:"Archaeologists have found 3,000-year-old honey in Egyptian tombs that was still edible. Honey's low moisture, acidic pH, and hydrogen peroxide make it virtually indestructible.",category:"Food & Nutrition",emoji:"🍯"},
+  {statement:"Carrots improve your night vision.",verdict:false,explanation:"Carrots contain Vitamin A essential for eye health, but eating them won't give you better-than-normal night vision. The myth was partly spread by British WWII propaganda to conceal radar.",category:"Food & Nutrition",emoji:"🥕"},
+  {statement:"Tomatoes are botanically a fruit.",verdict:true,explanation:"Botanically, a tomato is a fruit — specifically a berry. The US Supreme Court ruled it a vegetable in 1893, but for tax purposes, not botanical ones.",category:"Food & Nutrition",emoji:"🍅"},
+  {statement:"Humans use only 10% of their brain.",verdict:false,explanation:"Virtually all brain regions are active almost all the time. Brain imaging shows activity throughout the entire brain, and damage to almost any area produces noticeable effects.",category:"Psychology",emoji:"🧠"},
+  {statement:"You can tell if someone is lying by whether they look left or right.",verdict:false,explanation:"The idea that eye movement reveals lying has been thoroughly debunked. Studies find no reliable relationship between gaze direction and deception.",category:"Psychology",emoji:"👁️"},
+  {statement:"Yawning is contagious even when reading about it.",verdict:true,explanation:"Research suggests that reading or thinking about yawning triggers the contagious response in many people — you may have just yawned reading this.",category:"Psychology",emoji:"😴"},
+  {statement:"The first iPhone was released in 2007.",verdict:true,explanation:"Steve Jobs announced and released the original iPhone on 29 June 2007 — a device that changed the mobile industry.",category:"Technology & AI",emoji:"📱"},
+  {statement:"The internet and the World Wide Web are the same thing.",verdict:false,explanation:"The internet is the global network of connected computers. The World Wide Web is one service that runs over the internet, invented by Tim Berners-Lee in 1989.",category:"Technology & AI",emoji:"🌐"},
+  {statement:"India was the world's largest economy for most of the last 2,000 years.",verdict:true,explanation:"According to economic historian Angus Maddison's estimates, India and China together accounted for roughly 50% of world GDP for most of the past two millennia.",category:"Indian History & Culture",emoji:"🏛️"},
+  {statement:"Zero was invented in India.",verdict:true,explanation:"The concept of zero as a number with arithmetic rules was formalised by the Indian mathematician Brahmagupta in 628 AD, then spread to the Islamic world and Europe.",category:"Indian History & Culture",emoji:"0️⃣"},
+  {statement:"There is no sound in space.",verdict:true,explanation:"Sound requires a medium to travel through. In the vacuum of space, there are too few particles to transmit sound waves.",category:"Space",emoji:"🚀"},
+  {statement:"Jupiter has more moons than any other planet in our solar system.",verdict:true,explanation:"As of 2024, Jupiter has 95 confirmed moons — more than any other planet. Saturn is a close second with 146. The count keeps rising as telescopes improve.",category:"Space",emoji:"🪐"},
+];
+
+function FactOrFictionGame({ theme, goBack }) {
+  const [questions, setQuestions] = useState([]);
+  const [current, setCurrent] = useState(0);
+  const [answered, setAnswered] = useState(false);
+  const [chosen, setChosen] = useState(null);
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [correct, setCorrect] = useState(0);
+  const [done, setDone] = useState(false);
+  const TOTAL = 10;
+
+  useEffect(() => { startGame(); }, []);
+
+  function startGame() {
+    setQuestions(shuffleArr(FOF_FACTS).slice(0, TOTAL));
+    setCurrent(0); setAnswered(false); setChosen(null); setScore(0); setStreak(0); setBestStreak(0); setCorrect(0); setDone(false);
+  }
+
+  function handleAnswer(choice) {
+    if (answered) return;
+    const q = questions[current];
+    const isCorr = choice === q.verdict;
+    setAnswered(true); setChosen(choice);
+    if (isCorr) {
+      const pts = 10 + streak * 5;
+      setScore(s=>s+pts); setCorrect(c=>c+1);
+      const ns = streak+1; setStreak(ns); setBestStreak(b=>Math.max(b,ns));
+    } else { setStreak(0); }
+  }
+
+  function handleNext() {
+    if (current+1>=TOTAL) setDone(true);
+    else { setCurrent(c=>c+1); setAnswered(false); setChosen(null); }
+  }
+
+  const G = { trueGreen:"#10B981", falseRed:"#EF4444", violet:"#7C3AED", violetLt:"#9B6DFF", indigo:"#4F46E5", amber:"#F59E0B", bg:"#0D0D1A", card:"#1A1A35", border:"#2A2A4A", textPri:"#F0F0FF", textSec:"#9090B8", textMut:"#5A5A7A" };
+
+  const hdr = (
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+      <button onClick={goBack} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:"50%",width:36,height:36,cursor:"pointer",fontSize:16,color:G.textPri,display:"flex",alignItems:"center",justifyContent:"center"}}>{"←"}</button>
+      <div style={{width:36,height:36,background:"linear-gradient(135deg,#7C3AED,#4F46E5)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>{"🧠"}</div>
+      <div>
+        <div style={{fontSize:18,fontWeight:700,color:G.textPri}}>Fact or Fiction</div>
+        <div style={{fontSize:11,color:G.textSec}}>Can you tell them apart?</div>
+      </div>
+      {!done && <div style={{marginLeft:"auto",background:G.card,border:"1px solid "+G.border,borderRadius:999,padding:"6px 14px",fontSize:13,fontWeight:600,color:G.amber}}>{"🔥 "+score+" pts"}</div>}
+    </div>
+  );
+
+  if (!questions.length) return null;
+
+  if (done) {
+    const pct = Math.round((correct/TOTAL)*100);
+    const grade = pct===100?"🏆 Perfect score!":pct>=90?"⭐ Genius-level.":pct>=75?"🔥 Sharp as ever.":pct>=60?"✅ Solid knowledge.":pct>=40?"📚 More reading ahead!":"🤔 The facts fight back.";
+    return (
+      <div style={{minHeight:"100vh",background:G.bg,padding:"24px 16px 48px",fontFamily:"'Space Grotesk',system-ui,sans-serif",color:G.textPri}}>
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap');`}</style>
+        {hdr}
+        <div style={{textAlign:"center"}}>
+          <div style={{width:100,height:100,borderRadius:"50%",background:"linear-gradient(135deg,#7C3AED,#4F46E5)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:44,margin:"0 auto 24px",boxShadow:"0 0 40px rgba(124,58,237,0.4)"}}>{pct>=80?"🏆":pct>=60?"⭐":"📚"}</div>
+          <div style={{fontSize:48,fontWeight:700,letterSpacing:-1}}>{score}</div>
+          <div style={{fontSize:14,color:G.textSec,marginBottom:24}}>points earned</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:24}}>
+            {[{num:correct,lbl:"Correct",cls:G.trueGreen},{num:TOTAL-correct,lbl:"Wrong",cls:G.falseRed},{num:bestStreak,lbl:"Best streak",cls:G.amber}].map((s,i)=>(
+              <div key={i} style={{background:G.card,border:"1px solid "+G.border,borderRadius:14,padding:"14px 8px"}}>
+                <div style={{fontSize:24,fontWeight:700,color:s.cls}}>{s.num}</div>
+                <div style={{fontSize:11,color:G.textSec,marginTop:3}}>{s.lbl}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{fontSize:18,fontWeight:600,color:G.textSec,marginBottom:24}}>{grade}</div>
+          <button onClick={startGame} style={{width:"100%",padding:16,background:"linear-gradient(135deg,#7C3AED,#4F46E5)",color:"#fff",border:"none",borderRadius:14,fontFamily:"inherit",fontSize:15,fontWeight:700,cursor:"pointer"}}>Play Again</button>
+        </div>
+      </div>
+    );
+  }
+
+  const q = questions[current];
+  const progress = ((current+(answered?1:0))/TOTAL)*100;
+  const isCorr = answered && chosen===q.verdict;
+  const factBtn = answered?(chosen===true?(q.verdict===true?"sel-correct":"sel-wrong"):(q.verdict===true?"rev-true":"")):"";
+  const fictBtn = answered?(chosen===false?(q.verdict===false?"sel-correct":"sel-wrong"):(q.verdict===false?"rev-false":"")):"";
+
+  function btnStyle(base, cls) {
+    const isGreen = base==="fact"; const c = isGreen?G.trueGreen:G.falseRed;
+    if (cls==="sel-correct"||(isGreen&&cls==="rev-true")||(!isGreen&&cls==="rev-false")) return {background:c,borderColor:c,color:"#fff"};
+    if (cls==="sel-wrong") return {background:"rgba(239,68,68,0.15)",borderColor:G.falseRed,color:G.falseRed,opacity:0.6};
+    return {background:isGreen?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",borderColor:isGreen?"rgba(16,185,129,0.3)":"rgba(239,68,68,0.3)",color:c};
+  }
+
+  return (
+    <div style={{minHeight:"100vh",background:G.bg,padding:"24px 16px 48px",fontFamily:"'Space Grotesk',system-ui,sans-serif",color:G.textPri}}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap'); @keyframes fofSlide{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      {hdr}
+      <div style={{width:"100%",height:4,background:G.border,borderRadius:2,marginBottom:20,overflow:"hidden"}}>
+        <div style={{height:"100%",borderRadius:2,background:"linear-gradient(90deg,#7C3AED,#9B6DFF)",width:progress+"%",transition:"width 0.4s ease"}} />
+      </div>
+      {streak>=2 && <div style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:G.amber,fontWeight:600,marginBottom:16}}>{"🔥 "+streak+" in a row! +"+(streak*5)+" bonus pts"}</div>}
+      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:999,padding:"5px 12px",fontSize:11,fontWeight:600,color:G.violetLt,letterSpacing:"0.05em",textTransform:"uppercase",marginBottom:16}}>
+        <span>{q.emoji}</span><span>{q.category}</span>
+      </div>
+      <div style={{background:G.card,border:"1px solid "+(answered?(isCorr?"#10B981":"#EF4444"):G.border),borderRadius:20,padding:"28px 24px",marginBottom:24,transition:"border-color 0.3s"}}>
+        <div style={{fontSize:11,fontWeight:600,color:G.textMut,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:12}}>Statement {current+1} of {TOTAL}</div>
+        <div style={{fontSize:19,fontWeight:600,lineHeight:1.4,color:G.textPri}}>"{q.statement}"</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+        {[{base:"fact",label:"✓ Fact",cls:factBtn},{base:"fiction",label:"✗ Fiction",cls:fictBtn}].map(({base,label,cls})=>(
+          <button key={base} onClick={()=>handleAnswer(base==="fact")} disabled={answered}
+            style={{padding:"18px 12px",borderRadius:16,border:"2px solid",cursor:answered?"default":"pointer",fontFamily:"inherit",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all 0.18s",...btnStyle(base,cls)}}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {answered && (
+        <div style={{borderRadius:14,padding:"16px 18px",marginBottom:16,animation:"fofSlide 0.3s ease",background:isCorr?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isCorr?"rgba(16,185,129,0.3)":"rgba(239,68,68,0.3)")}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+            <span style={{fontSize:20}}>{isCorr?"✅":"❌"}</span>
+            <span style={{fontSize:14,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",color:isCorr?G.trueGreen:G.falseRed}}>{isCorr?"Correct — ":"Wrong — "}it{"'"}s {q.verdict?"a fact!":"fiction!"}</span>
+          </div>
+          <div style={{fontSize:14,lineHeight:1.55,color:G.textSec}}>{q.explanation}</div>
+        </div>
+      )}
+      {answered && (
+        <button onClick={handleNext} style={{width:"100%",padding:16,background:"linear-gradient(135deg,#7C3AED,#4F46E5)",color:"#fff",border:"none",borderRadius:14,fontFamily:"inherit",fontSize:15,fontWeight:700,cursor:"pointer"}}>
+          {current+1>=TOTAL?"See Results →":"Next Statement →"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ChallengeScreen({ theme, go, dailyDone, reviewOn, reviewDue, reviewDone, reviewFreq, daysUntilReview, streak, learnedCount }) {
   const freqLabel = reviewFreq === 1 ? "Weekly" : reviewFreq === 2 ? "Fortnightly" : "Monthly";
   return (
@@ -3761,6 +4196,26 @@ function ChallengeScreen({ theme, go, dailyDone, reviewOn, reviewDue, reviewDone
       <div style={{background:theme.cardGrad,borderRadius:16,padding:"18px 20px",marginTop:24,border:"1px solid "+theme.border}}>
         <div style={{fontSize:11,color:theme.sub,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>Why it works</div>
         <div style={{fontSize:13,color:theme.text,lineHeight:1.7,fontWeight:700}}>Active recall beats passive reading for retention. Both quizzes trigger the retrieval effect, strengthening the neural pathways you built while reading.</div>
+      </div>
+
+      <div style={{fontSize:11,color:theme.sub,letterSpacing:2,textTransform:"uppercase",marginBottom:12,marginTop:28}}>Games</div>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div onClick={()=>go("connections")} className="bb-press" style={{background:theme.card,borderRadius:18,padding:"20px",cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.06)",display:"flex",gap:14,alignItems:"center"}}>
+          <div style={{width:54,height:54,borderRadius:15,background:"linear-gradient(135deg,#7C3AED,#4F46E5)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,flexShrink:0}}>{"🔗"}</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:16,fontWeight:700,color:theme.text}}>Connections</div>
+            <div style={{fontSize:13,color:theme.sub,marginTop:4}}>Group 16 items into 4 hidden categories — 10 puzzles</div>
+          </div>
+          <div style={{fontSize:20,color:theme.sub}}>{"→"}</div>
+        </div>
+        <div onClick={()=>go("factorfiction")} className="bb-press" style={{background:theme.card,borderRadius:18,padding:"20px",cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.06)",display:"flex",gap:14,alignItems:"center"}}>
+          <div style={{width:54,height:54,borderRadius:15,background:"linear-gradient(135deg,#10B981,#059669)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,flexShrink:0}}>{"🧠"}</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:16,fontWeight:700,color:theme.text}}>Fact or Fiction</div>
+            <div style={{fontSize:13,color:theme.sub,marginTop:4}}>10 statements — can you sort the facts from the myths?</div>
+          </div>
+          <div style={{fontSize:20,color:theme.sub}}>{"→"}</div>
+        </div>
       </div>
     </div>
   );
