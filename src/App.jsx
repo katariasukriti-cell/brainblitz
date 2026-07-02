@@ -4712,16 +4712,18 @@ function NotifPrompt({ theme }) {
 
   useEffect(() => {
     const visits = parseInt(localStorage.getItem("bb_visits") || "0", 10);
-    if (visits < 2) return;
-    // Temporary: clear old dismissed flag so prompt shows again after v2 deploy
-    if (localStorage.getItem("bb_notif_asked") === "1" && !localStorage.getItem("bb_notif_v2")) {
-      localStorage.removeItem("bb_notif_asked");
-      localStorage.setItem("bb_notif_v2", "1");
+    if (visits < 1) return;
+    // Re-prompt users who dismissed before browser permission was granted
+    if (localStorage.getItem("bb_notif_asked") && !localStorage.getItem("bb_notif_v3")) {
+      if (Notification?.permission === "default") {
+        localStorage.removeItem("bb_notif_asked");
+      }
+      localStorage.setItem("bb_notif_v3", "1");
     }
     if (localStorage.getItem("bb_notif_asked")) return;
     if (Notification?.permission === "granted" || Notification?.permission === "denied") return;
 
-    const timer = setTimeout(() => setShow(true), 30000);
+    const timer = setTimeout(() => setShow(true), 10000);
     return () => clearTimeout(timer);
   }, []);
 
