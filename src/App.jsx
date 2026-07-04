@@ -5023,10 +5023,13 @@ function buildPBQuestions() {
     {q:"What is the 'Great Oxygenation Event' approximately 2.4 billion years ago?",opts:["Earth's first ice age","When photosynthetic bacteria filled the atmosphere with oxygen","When the first animals appeared","When the Moon formed from a giant impact"],a:1},
   ],
   };
+  // Always merge seed questions in — they are genuinely difficulty-calibrated general
+  // knowledge questions, whereas article-derived questions test article recall and tend
+  // to skew harder even when marked "easy".
   return {
-    easy:   easy.length   > 0 ? easy   : SEED.easy,
-    medium: medium.length > 0 ? medium : SEED.medium,
-    hard:   hard.length   > 0 ? hard   : SEED.hard,
+    easy:   [...SEED.easy,   ...easy],
+    medium: [...SEED.medium, ...medium],
+    hard:   [...SEED.hard,   ...hard],
   };
 }
 const PB_QUESTIONS = buildPBQuestions();
