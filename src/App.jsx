@@ -4020,7 +4020,34 @@ function ConnectionsGame({ theme, goBack }) {
 }
 
 // ─── FACT OR FICTION GAME ────────────────────────────────────────────────────
-const FOF_FACTS = [
+// Derive Fact or Fiction entries from article quiz questions.
+// Each question generates one "Fact" (correct answer) and one "Fiction" (a wrong answer).
+// Statement shown to the player: "[Question] — The answer is: [claimed answer]"
+function buildFOFFacts() {
+  const facts = [];
+  ARTICLES.forEach(article => {
+    const qs = article.quiz?.questions;
+    if (!qs) return;
+    qs.forEach(q => {
+      const correctText = q.opts[q.ans];
+      // Wrong option: first option that isn't the correct one
+      const wrongText = q.opts.find((_, i) => i !== q.ans);
+      const statement = q.q;
+      const base = { category: article.category, emoji: article.emoji, source: article.title };
+      facts.push({ ...base, statement, claimedAnswer: correctText, verdict: true,
+        explanation: `Correct — ${correctText}. (From: ${article.title})` });
+      if (wrongText) {
+        facts.push({ ...base, statement, claimedAnswer: wrongText, verdict: false,
+          explanation: `Incorrect — the right answer is "${correctText}". (From: ${article.title})` });
+      }
+    });
+  });
+  return facts;
+}
+const FOF_FACTS = buildFOFFacts();
+
+// Keep original hand-curated facts as a seed so the pool isn't empty before articles load
+const FOF_FACTS_SEED = [
   {statement:"A teaspoon of healthy topsoil contains more living organisms than there are humans on Earth.",verdict:true,explanation:"A single teaspoon of healthy topsoil harbours billions of bacteria, fungi, nematodes, and other organisms — far exceeding Earth's human population of 8 billion.",category:"Science",emoji:"🌱"},
   {statement:"The human body contains more bacterial cells than human cells.",verdict:true,explanation:"Recent estimates put the ratio at roughly 1:1, but bacteria are far more numerous by count in the gut. We are, in a real sense, more microbe than human.",category:"Science",emoji:"🧫"},
   {statement:"Sharks are older than trees.",verdict:true,explanation:"Sharks have existed for around 450 million years. Trees only evolved approximately 350 million years ago — meaning sharks swam the oceans before forests existed.",category:"Science",emoji:"🦈"},
@@ -4067,13 +4094,15 @@ const FOF_FACTS = [
   {statement:"The word 'robot' comes from a Czech play.",verdict:true,explanation:"The word 'robot' was coined by Czech writer Karel Čapek in his 1920 play R.U.R. It derives from the Czech word 'robota', meaning forced labour.",category:"Technology & AI",emoji:"🤖"},
   {statement:"More people have access to a mobile phone than to a toilet.",verdict:true,explanation:"Estimates suggest approximately 6 billion people have access to mobile phones while only around 4.5 billion have access to safely managed sanitation.",category:"Current Affairs",emoji:"📞"},
 ];
+// Merge: article-derived facts first (grows automatically), seed facts as fallback variety
+const ALL_FOF_FACTS = FOF_FACTS.length > 0 ? [...FOF_FACTS, ...FOF_FACTS_SEED] : FOF_FACTS_SEED;
 
 const TOTAL_FOF = 10;
 
 function FactOrFictionGame({ theme, goBack }) {
   const doneTodayKey = "bb_fof_done_" + TODAY;
   const doneToday = S.get(doneTodayKey, false);
-  const todayQs = seededShuffle(FOF_FACTS, TODAY+"fof").slice(0, TOTAL_FOF);
+  const todayQs = seededShuffle(ALL_FOF_FACTS, TODAY+"fof").slice(0, TOTAL_FOF);
 
   const [questions] = useState(todayQs);
   const [current, setCurrent] = useState(0);
@@ -4173,7 +4202,14 @@ function FactOrFictionGame({ theme, goBack }) {
 
       <div style={{background:theme.card,borderRadius:18,padding:"24px 20px",marginBottom:20,border:"1px solid "+(answered?(isCorr?"rgba(0,255,136,0.4)":"rgba(255,71,87,0.4)"):theme.border),transition:"border-color 0.3s"}}>
         <div style={{fontSize:11,color:theme.sub,marginBottom:10,letterSpacing:1,textTransform:"uppercase"}}>Statement {current+1} of {TOTAL_FOF}</div>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,lineHeight:1.4,color:theme.text}}>"{q.statement}"</div>
+        {q.claimedAnswer ? (
+          <>
+            <div style={{fontSize:13,color:theme.sub,lineHeight:1.5,marginBottom:10}}>{q.statement}</div>
+            <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,lineHeight:1.4,color:theme.text}}>"{q.claimedAnswer}"</div>
+          </>
+        ) : (
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,lineHeight:1.4,color:theme.text}}>"{q.statement}"</div>
+        )}
       </div>
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
@@ -4910,7 +4946,25 @@ const PB_PITFALLS={9:6,17:14,28:25};
 const PB_BREAKTHROUGHS={3:6,13:16,24:27};
 function pbBuildPath(){const p=[];for(let row=4;row>=0;row--){const fromLeft=(4-row)%2===0;const cols=fromLeft?[0,1,2,3,4,5]:[5,4,3,2,1,0];cols.forEach(col=>p.push({row,col}));}return p;}
 const PB_PATH=pbBuildPath();
-const PB_QUESTIONS={
+// Tags considered easy/hard — everything else is medium
+const PB_EASY_TAGS = new Set(["Sports","Food & Culture","Arts & Culture","Geography & Earth"]);
+const PB_HARD_TAGS = new Set(["Science & Space","Technology & AI","Philosophy & Ideas","Psychology & Mind"]);
+function buildPBQuestions() {
+  const easy = [], medium = [], hard = [];
+  ARTICLES.forEach(article => {
+    const qs = article.quiz?.questions;
+    if (!qs) return;
+    const tag = article.tags?.[0] || "";
+    const diff = PB_EASY_TAGS.has(tag) ? "easy" : PB_HARD_TAGS.has(tag) ? "hard" : "medium";
+    qs.forEach(q => {
+      const entry = { q: q.q, opts: q.opts, a: q.ans };
+      if (diff === "easy") easy.push(entry);
+      else if (diff === "hard") hard.push(entry);
+      else medium.push(entry);
+    });
+  });
+  // Fallback seed questions so the pool is never empty
+  const SEED = {
   easy:[
     {q:"What is the capital of Australia?",opts:["Sydney","Melbourne","Canberra","Brisbane"],a:2},
     {q:"How many continents are there on Earth?",opts:["5","6","7","8"],a:2},
@@ -4971,7 +5025,14 @@ const PB_QUESTIONS={
     {q:"What did AlphaFold2 solve that had challenged biology for decades?",opts:["How DNA replicates","Predicting 3D protein structure from amino acid sequences","How RNA transcribes DNA","The origin of the genetic code"],a:1},
     {q:"What is the 'Great Oxygenation Event' approximately 2.4 billion years ago?",opts:["Earth's first ice age","When photosynthetic bacteria filled the atmosphere with oxygen","When the first animals appeared","When the Moon formed from a giant impact"],a:1},
   ],
-};
+  };
+  return {
+    easy:   easy.length   > 0 ? easy   : SEED.easy,
+    medium: medium.length > 0 ? medium : SEED.medium,
+    hard:   hard.length   > 0 ? hard   : SEED.hard,
+  };
+}
+const PB_QUESTIONS = buildPBQuestions();
 const PB_DIFF_PTS={easy:1,medium:2,hard:3};
 const PB_MEDALS=["🥇","🥈","🥉","4️⃣"];
 const PB_BOT_DEF={name:"CPU",color:"#8B8FF9",isBot:true};
