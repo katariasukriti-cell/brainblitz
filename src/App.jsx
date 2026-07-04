@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 
 const FL = document.createElement("link");
 FL.rel = "stylesheet";
@@ -3235,7 +3235,7 @@ export default function App() {
   })();
 
   const shared = { theme, go, goBack, streak, xp, level, userName, photo, learned, learnedArticles };
-  const isSub = ["article", "daily", "review", "learnings", "personalise", "connections", "factorfiction"].includes(screen);
+  const isSub = ["article", "daily", "review", "learnings", "personalise", "connections", "factorfiction", "pitfalls"].includes(screen);
 
   const NAV = [
     { id:"home", icon:"home", label:"Home" },
@@ -3255,6 +3255,7 @@ export default function App() {
           {screen==="challenge" && <ChallengeScreen theme={theme} go={go} dailyDone={dailyDone} reviewOn={reviewOn} reviewDue={reviewDue} reviewDone={reviewDone===TODAY} reviewFreq={reviewFreq} daysUntilReview={daysUntilReview} streak={streak} learnedCount={learnedArticles.length} />}
           {screen==="connections" && <ConnectionsGame theme={theme} goBack={()=>go("challenge")} />}
           {screen==="factorfiction" && <FactOrFictionGame theme={theme} goBack={()=>go("challenge")} />}
+          {screen==="pitfalls" && <PitfallsBreakthroughs goBack={()=>go("challenge")} />}
           {screen==="daily" && <DailyQuiz theme={theme} go={go} dailyDone={dailyDone} onFinish={finishDaily} streak={streak} setQuizLock={setQuizLock} />}
           {screen==="review" && <ReviewQuiz theme={theme} go={go} questions={reviewQuestions} onFinish={finishReview} setQuizLock={setQuizLock} />}
           {screen==="progress" && <ProgressScreen theme={theme} go={go} xp={xp} level={level} streak={streak} learnedArticles={learnedArticles} quizScores={quizScores} />}
@@ -3264,7 +3265,7 @@ export default function App() {
         {!isSub && (
           <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:theme.nav,borderTop:"1px solid "+theme.border,display:"flex",zIndex:100}}>
             {NAV.map(t => {
-              const active = screen===t.id || (t.id==="challenge" && ["daily","review","connections","factorfiction"].includes(screen));
+              const active = screen===t.id || (t.id==="challenge" && ["daily","review","connections","factorfiction","pitfalls"].includes(screen));
               return (
                 <button key={t.id} onClick={()=>go(t.id)} style={{flex:1,padding:"12px 0 16px",background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,fontFamily:"'DM Sans',sans-serif",position:"relative"}}>
                   <span style={{opacity:active?1:0.45,display:"flex"}}><NavIcon name={t.icon} color={active?theme.text:theme.sub} active={active} /></span>
@@ -4263,6 +4264,14 @@ function ChallengeScreen({ theme, go, dailyDone, reviewOn, reviewDue, reviewDone
           </div>
           <div style={{fontSize:20,color:theme.sub}}>{"→"}</div>
         </div>
+        <div onClick={()=>go("pitfalls")} className="bb-press" style={{background:theme.card,borderRadius:18,padding:"20px",cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.06)",display:"flex",gap:14,alignItems:"center"}}>
+          <div style={{width:54,height:54,borderRadius:15,background:"linear-gradient(135deg,#22D3EE,#FF4D8D)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,flexShrink:0}}>{"🎲"}</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:16,fontWeight:700,color:theme.text}}>Pitfalls & Breakthroughs</div>
+            <div style={{fontSize:13,color:theme.sub,marginTop:4}}>Board game — answer trivia to move forward, dodge the pitfalls!</div>
+          </div>
+          <div style={{fontSize:20,color:theme.sub}}>{"→"}</div>
+        </div>
       </div>
     </div>
   );
@@ -4883,6 +4892,470 @@ function InstallPrompt({ theme }) {
           </button>
         </>
       )}
+    </div>
+  );
+}
+
+// ─── PITFALLS & BREAKTHROUGHS ─────────────────────────────────────────────────
+const PB_T = {
+  bg:"#0A0D1C",glowA:"#141B3D",glowB:"#1C1034",panel:"rgba(255,255,255,0.035)",
+  panelSolid:"#0E1226",tile:"#10152E",tileAlt:"#0D1226",border:"rgba(120,140,220,0.16)",
+  borderSoft:"rgba(120,140,220,0.10)",warmA:"#22D3EE",warmB:"#0E9DE0",green:"#2EE8B0",
+  red:"#FF4D8D",amber:"#FFC94D",blue:"#22D3EE",pink:"#C77DFF",violet:"#8B8FF9",
+  textPri:"#EDF0FF",textSec:"#8E97C9",textMut:"#5A648F",
+};
+const PB_PLAYER_DEFS=[{name:"Player 1",color:PB_T.amber},{name:"Player 2",color:PB_T.blue},{name:"Player 3",color:PB_T.green},{name:"Player 4",color:PB_T.pink}];
+const PB_TOTAL=30;
+const PB_PITFALLS={9:6,17:14,28:25};
+const PB_BREAKTHROUGHS={3:6,13:16,24:27};
+function pbBuildPath(){const p=[];for(let row=4;row>=0;row--){const fromLeft=(4-row)%2===0;const cols=fromLeft?[0,1,2,3,4,5]:[5,4,3,2,1,0];cols.forEach(col=>p.push({row,col}));}return p;}
+const PB_PATH=pbBuildPath();
+const PB_QUESTIONS={
+  easy:[
+    {q:"What is the capital of Australia?",opts:["Sydney","Melbourne","Canberra","Brisbane"],a:2},
+    {q:"How many continents are there on Earth?",opts:["5","6","7","8"],a:2},
+    {q:"Which planet is closest to the Sun?",opts:["Venus","Mercury","Earth","Mars"],a:1},
+    {q:"What language do people in Brazil primarily speak?",opts:["Spanish","French","Portuguese","English"],a:2},
+    {q:"How many sides does a hexagon have?",opts:["5","6","7","8"],a:1},
+    {q:"Which is the largest ocean on Earth?",opts:["Atlantic","Indian","Arctic","Pacific"],a:3},
+    {q:"What is the chemical symbol for gold?",opts:["Go","Gd","Au","Ag"],a:2},
+    {q:"In which country was the Mughal Empire based?",opts:["Pakistan","Afghanistan","India","Persia"],a:2},
+    {q:"What gas do plants absorb from the atmosphere?",opts:["Oxygen","Nitrogen","Carbon dioxide","Hydrogen"],a:2},
+    {q:"Who painted the Mona Lisa?",opts:["Michelangelo","Raphael","Leonardo da Vinci","Botticelli"],a:2},
+    {q:"Which is the smallest planet in our solar system?",opts:["Mars","Pluto","Mercury","Venus"],a:2},
+    {q:"How many bones are in the adult human body?",opts:["106","206","306","406"],a:1},
+    {q:"Which river is the longest in the world?",opts:["Amazon","Mississippi","Yangtze","Nile"],a:3},
+    {q:"In what year did the Berlin Wall fall?",opts:["1985","1987","1989","1991"],a:2},
+    {q:"What is the hardest natural substance on Earth?",opts:["Gold","Iron","Diamond","Quartz"],a:2},
+    {q:"What is the capital city of Japan?",opts:["Seoul","Beijing","Tokyo","Bangkok"],a:2},
+    {q:"How many players are on a standard football team?",opts:["9","10","11","12"],a:2},
+    {q:"Which country is home to the Amazon rainforest?",opts:["Colombia","Peru","Venezuela","Brazil"],a:3},
+  ],
+  medium:[
+    {q:"Which Indian mathematician formalised rules for zero in 628 AD?",opts:["Aryabhata","Ramanujan","Brahmagupta","Bhaskara"],a:2},
+    {q:"What is the First Law of Thermodynamics about?",opts:["Energy cannot be created or destroyed","Heat always flows cold to hot","Objects in motion stay in motion","Force equals mass times acceleration"],a:0},
+    {q:"In which year did the First World War begin?",opts:["1912","1913","1914","1916"],a:2},
+    {q:"What does DNA stand for?",opts:["Deoxyribonucleic acid","Dinitrogen acid","Deoxyribonitric acid","Dynamic nucleic acid"],a:0},
+    {q:"Which empire was ruled by Akbar the Great?",opts:["Ottoman","Persian","Mughal","Maratha"],a:2},
+    {q:"What is the term for a word that reads the same forwards and backwards?",opts:["Anagram","Palindrome","Synonym","Homophone"],a:1},
+    {q:"Which artist painted the Sistine Chapel ceiling?",opts:["Leonardo da Vinci","Raphael","Caravaggio","Michelangelo"],a:3},
+    {q:"What is the powerhouse of the cell?",opts:["Nucleus","Ribosome","Mitochondria","Vacuole"],a:2},
+    {q:"What is the speed of light in a vacuum approximately?",opts:["300,000 km/s","30,000 km/s","3,000,000 km/s","3,000 km/s"],a:0},
+    {q:"Who wrote 'One Hundred Years of Solitude'?",opts:["Pablo Neruda","Jorge Luis Borges","Gabriel García Márquez","Mario Vargas Llosa"],a:2},
+    {q:"What year did India gain independence?",opts:["1945","1946","1947","1948"],a:2},
+    {q:"The Amazon River discharges into which ocean?",opts:["Pacific","Caribbean","Indian","Atlantic"],a:3},
+    {q:"Which country has the most UNESCO World Heritage Sites?",opts:["India","France","China","Italy"],a:3},
+    {q:"What is the Silk Road famous for?",opts:["A Roman road network","Ancient trade routes between China and the West","A medieval pilgrimage path","A spice trading sea route"],a:1},
+    {q:"What is the term for the study of earthquakes?",opts:["Volcanology","Seismology","Geology","Tectonics"],a:1},
+    {q:"Which gas makes up the majority of Earth's atmosphere?",opts:["Oxygen","Carbon dioxide","Argon","Nitrogen"],a:3},
+    {q:"Who developed the theory of natural selection?",opts:["Gregor Mendel","Louis Pasteur","Charles Darwin","Alfred Russel Wallace"],a:2},
+    {q:"What does the Richter scale measure?",opts:["Wind speed","Earthquake magnitude","Volcanic activity","Tsunami height"],a:1},
+  ],
+  hard:[
+    {q:"What did David Chalmers call the central mystery of consciousness?",opts:["The hard problem","The binding problem","The explanatory gap","The zombie problem"],a:0},
+    {q:"Which ancient Indian text written by Kautilya is compared to Machiavelli's Prince?",opts:["Arthashastra","Manusmriti","Rigveda","Upanishads"],a:0},
+    {q:"What ecological phenomenon occurs when reintroducing a top predator reshapes an entire ecosystem?",opts:["Ecological succession","Trophic cascade","Keystone effect","Species rebound"],a:1},
+    {q:"What is the Chandrasekhar Limit — the maximum mass a white dwarf can have before collapsing?",opts:["0.8 solar masses","1.0 solar masses","1.4 solar masses","2.0 solar masses"],a:2},
+    {q:"In Nash Equilibrium, no player can benefit by doing what?",opts:["Playing the game again","Changing strategy while others keep theirs","Forming alliances","Observing other players"],a:1},
+    {q:"What does EMDR stand for in trauma therapy?",opts:["Electromagnetic deep reset","Eye Movement Desensitisation and Reprocessing","Extended mood disorder recovery","Early memory directive response"],a:1},
+    {q:"What was the Bandung Conference of 1955 primarily about?",opts:["Nuclear disarmament","Founding the Non-Aligned Movement","Establishing the UN","Decolonising Africa"],a:1},
+    {q:"What does CRISPR stand for in gene-editing?",opts:["Clustered Regularly Interspaced Short Palindromic Repeats","Complex RNA Integration System for Protein Repair","Cellular Replication Index for Sequence Precision","Coded RNA Insertion System for Protein Regulation"],a:0},
+    {q:"In Buddhist philosophy, what does 'anatta' mean?",opts:["Compassion for all beings","The cycle of birth and death","Non-self — no permanent unchanging self","The path to enlightenment"],a:2},
+    {q:"What does Branko Milanovic's 'elephant chart' illustrate?",opts:["How inequality between countries grew","Global income gains 1988–2008 — biggest for Asian middle class and global elite, stagnation for rich-country lower-middle class","Why GDP growth does not equal human development","Trade and economic growth relationship"],a:1},
+    {q:"The Pangea supercontinent began breaking apart approximately how many years ago?",opts:["100 million","175 million","250 million","400 million"],a:1},
+    {q:"What is the 'RNA World' hypothesis about?",opts:["A network of RNA-sharing organisms","RNA as the first self-replicating molecule before DNA and proteins","A world in which RNA replaced DNA","Viral RNA dominating early Earth"],a:1},
+    {q:"What does 'wu wei' mean in Taoist philosophy?",opts:["Ritual ceremony","Non-action or effortless action aligned with nature","Sacred text study","Complete social withdrawal"],a:1},
+    {q:"The learning rate for lithium-ion batteries means costs fall by roughly what percentage for each doubling of production?",opts:["8%","18%","28%","38%"],a:1},
+    {q:"What is the 'poverty of the stimulus' argument in linguistics?",opts:["Children hear too little language to learn well","Children learn grammar beyond what their limited input could explain, implying innate knowledge","Poor children learn language more slowly","Language input quality matters more than quantity"],a:1},
+    {q:"Which two neuroscientists discovered REM sleep in 1953?",opts:["Freud and Jung","Pavlov and Skinner","Aserinsky and Kleitman","Seligman and Csikszentmihalyi"],a:2},
+    {q:"What did AlphaFold2 solve that had challenged biology for decades?",opts:["How DNA replicates","Predicting 3D protein structure from amino acid sequences","How RNA transcribes DNA","The origin of the genetic code"],a:1},
+    {q:"What is the 'Great Oxygenation Event' approximately 2.4 billion years ago?",opts:["Earth's first ice age","When photosynthetic bacteria filled the atmosphere with oxygen","When the first animals appeared","When the Moon formed from a giant impact"],a:1},
+  ],
+};
+const PB_DIFF_PTS={easy:1,medium:2,hard:3};
+const PB_MEDALS=["🥇","🥈","🥉","4️⃣"];
+const PB_BOT_DEF={name:"CPU",color:"#8B8FF9",isBot:true};
+const PB_BOT_LEVELS={
+  easy:{label:"Easy",diffOdds:{easy:0.55,medium:0.30,hard:0.15},accuracy:{easy:0.60,medium:0.45,hard:0.30}},
+  normal:{label:"Normal",diffOdds:{easy:0.35,medium:0.40,hard:0.25},accuracy:{easy:0.80,medium:0.60,hard:0.42}},
+  hard:{label:"Hard",diffOdds:{easy:0.20,medium:0.40,hard:0.40},accuracy:{easy:0.95,medium:0.78,hard:0.60}},
+};
+const PB_CSS=`
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap');
+.pb-root*{box-sizing:border-box;margin:0;padding:0;}
+.pb-root{background:radial-gradient(900px 520px at 15% -10%,${PB_T.glowA} 0%,transparent 60%),radial-gradient(800px 500px at 110% 15%,${PB_T.glowB} 0%,transparent 55%),${PB_T.bg};color:${PB_T.textPri};font-family:'Outfit',system-ui,sans-serif;min-height:100vh;display:flex;justify-content:center;padding:18px 12px 60px;}
+.pb-inner{width:100%;max-width:580px;}
+.pb-display{font-family:'Fredoka','Outfit',sans-serif;}
+.pb-setup{display:flex;flex-direction:column;align-items:center;padding:12px 0;animation:pb-rise 0.5s ease both;}
+.pb-logo{width:68px;height:68px;border-radius:22px;background:linear-gradient(140deg,${PB_T.warmA},${PB_T.warmB});box-shadow:0 10px 34px rgba(34,211,238,0.4),inset 0 -3px 0 rgba(0,0,0,0.18);display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:14px;transform:rotate(-6deg);}
+.pb-game-title{font-family:'Fredoka',sans-serif;font-size:30px;font-weight:600;letter-spacing:-0.3px;line-height:1.1;text-align:center;}
+.pb-game-title .pit{color:${PB_T.red};}.pb-game-title .amp{color:${PB_T.textMut};font-weight:400;padding:0 4px;}.pb-game-title .brk{color:${PB_T.green};}
+.pb-game-sub{font-size:14px;color:${PB_T.textSec};margin:8px 0 30px;text-align:center;}
+.pb-section-lbl{font-size:11px;font-weight:700;color:${PB_T.textMut};letter-spacing:0.14em;text-transform:uppercase;margin-bottom:12px;width:100%;text-align:center;}
+.pb-players-row{display:flex;justify-content:center;gap:10px;margin-bottom:26px;flex-wrap:wrap;}
+.pb-pcard{min-width:106px;background:${PB_T.panel};border:1.5px solid ${PB_T.border};border-radius:18px;padding:15px 12px 13px;text-align:center;cursor:pointer;transition:transform 0.18s,border-color 0.18s,background 0.18s,box-shadow 0.18s;backdrop-filter:blur(6px);}
+.pb-pcard:hover{transform:translateY(-3px);}
+.pb-pcard.active{border-color:var(--pc);background:rgba(255,255,255,0.08);box-shadow:0 8px 26px rgba(0,0,0,0.35),0 0 0 1px var(--pc);}
+.pb-pcard-name{font-family:'Fredoka',sans-serif;font-size:13px;font-weight:500;color:var(--pc);}
+.pb-start-btn{padding:17px 52px;border:none;border-radius:999px;cursor:pointer;font-family:'Fredoka',sans-serif;font-size:17px;font-weight:600;color:#04222B;background:linear-gradient(140deg,${PB_T.warmA},${PB_T.warmB});box-shadow:0 12px 32px rgba(34,211,238,0.42),inset 0 2px 0 rgba(255,255,255,0.35);transition:transform 0.15s,box-shadow 0.15s;margin-bottom:26px;}
+.pb-start-btn:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 16px 40px rgba(34,211,238,0.5),inset 0 2px 0 rgba(255,255,255,0.35);}
+.pb-start-btn:active{transform:translateY(0) scale(0.99);}
+.pb-rules{background:${PB_T.panel};border:1px solid ${PB_T.borderSoft};border-radius:18px;padding:16px 18px;width:100%;backdrop-filter:blur(6px);}
+.pb-rules-title{font-family:'Fredoka',sans-serif;font-size:12px;font-weight:600;color:${PB_T.violet};margin-bottom:10px;text-transform:uppercase;letter-spacing:0.1em;}
+.pb-rule{font-size:13px;color:${PB_T.textSec};line-height:1.85;display:flex;gap:10px;}
+.pb-topbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.pb-topbar-logo{width:34px;height:34px;border-radius:11px;background:linear-gradient(140deg,${PB_T.warmA},${PB_T.warmB});display:flex;align-items:center;justify-content:center;font-size:17px;transform:rotate(-6deg);flex-shrink:0;}
+.pb-topbar-title{font-family:'Fredoka',sans-serif;font-size:15px;font-weight:600;letter-spacing:-0.2px;}
+.pb-board-wrap{width:100%;position:relative;background:${PB_T.panelSolid};border:1px solid ${PB_T.border};border-radius:22px;padding:10px;margin-bottom:6px;box-shadow:0 20px 50px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.06);}
+.pb-board-grid{display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(5,1fr);gap:5px;width:100%;aspect-ratio:6/5.4;position:relative;}
+.pb-cell{border-radius:12px;position:relative;overflow:visible;background:${PB_T.tile};border:1px solid rgba(80,100,180,0.28);display:flex;align-items:center;justify-content:center;}
+.pb-cell.alt{background:${PB_T.tileAlt};}
+.pb-cell.breakthrough{background:rgba(46,232,176,0.08);border:1.5px solid rgba(46,232,176,0.75);box-shadow:0 0 10px rgba(46,232,176,0.28);}
+.pb-cell.pitfall{background:rgba(255,77,141,0.08);border:1.5px solid rgba(255,77,141,0.7);box-shadow:0 0 10px rgba(255,77,141,0.26);}
+.pb-cell.finish{background:rgba(255,201,77,0.1);border:1.5px solid rgba(255,201,77,0.8);box-shadow:0 0 14px rgba(255,201,77,0.35);animation:pb-finish-pulse 2.4s ease-in-out infinite;}
+@keyframes pb-finish-pulse{0%,100%{box-shadow:0 0 10px rgba(255,201,77,0.25);}50%{box-shadow:0 0 20px rgba(255,201,77,0.5);}}
+.pb-cell-num{font-size:10px;color:#6672B8;position:absolute;top:5px;left:7px;font-weight:600;}
+.pb-cell-icon{font-size:11px;opacity:0.95;}
+.pb-token-layer{position:absolute;inset:10px;pointer-events:none;}
+.pb-token{position:absolute;width:30px;height:30px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.5),0 0 12px var(--pc);background:radial-gradient(circle at 34% 28%,rgba(255,255,255,0.55),var(--pc) 58%);transform:translate(-50%,-50%);transition:left 0.26s cubic-bezier(0.34,1.4,0.55,1),top 0.26s cubic-bezier(0.34,1.4,0.55,1);z-index:3;}
+.pb-token::after{content:"";position:absolute;inset:0;margin:auto;width:9px;height:9px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.3);}
+.pb-token.me{z-index:4;animation:pb-token-bob 1.4s ease-in-out infinite;}
+@keyframes pb-token-bob{0%,100%{margin-top:0;}50%{margin-top:-3px;}}
+.pb-start-zone{display:flex;align-items:center;gap:6px;font-size:11px;color:${PB_T.textMut};margin:6px 4px 12px;min-height:16px;}
+.pb-dot{display:inline-block;width:18px;height:18px;border-radius:50%;border:2px solid #fff;position:relative;flex-shrink:0;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,0.55),var(--pc) 58%);box-shadow:0 2px 6px rgba(0,0,0,0.4),0 0 8px var(--pc);}
+.pb-dot::after{content:"";position:absolute;inset:0;margin:auto;width:5px;height:5px;border-radius:50%;background:#fff;}
+.pb-dot.lg{width:34px;height:34px;border-width:2.5px;}.pb-dot.lg::after{width:10px;height:10px;}
+.pb-name-row{display:flex;align-items:center;gap:10px;width:100%;background:${PB_T.panel};border:1.5px solid ${PB_T.border};border-radius:14px;padding:10px 14px;backdrop-filter:blur(6px);}
+.pb-name-col{display:flex;flex-direction:column;gap:9px;width:100%;margin-bottom:26px;}
+.pb-name-input{flex:1;min-width:0;background:transparent;border:none;outline:none;font-family:'Fredoka',sans-serif;font-size:14px;font-weight:500;color:var(--pc);caret-color:${PB_T.textPri};}
+.pb-name-input::placeholder{color:${PB_T.textMut};font-weight:400;}
+.pb-name-row:focus-within{border-color:var(--pc);}
+.pb-hud{display:flex;gap:8px;margin-bottom:12px;}
+.pb-hud-card{flex:1;background:${PB_T.panel};border:1.5px solid ${PB_T.border};border-radius:15px;padding:9px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:1px;transition:border-color 0.25s,box-shadow 0.25s,transform 0.25s;backdrop-filter:blur(6px);}
+.pb-hud-card.active{border-color:var(--pc);box-shadow:0 0 0 1px var(--pc),0 6px 20px rgba(0,0,0,0.35);transform:translateY(-2px);}
+.pb-hud-name{font-family:'Fredoka',sans-serif;font-size:10.5px;font-weight:500;color:var(--pc);}
+.pb-hud-turnpill{font-size:8.5px;font-weight:700;letter-spacing:0.08em;color:#04222B;background:linear-gradient(140deg,${PB_T.warmA},${PB_T.warmB});border-radius:999px;padding:2px 8px;margin-top:3px;text-transform:uppercase;}
+.pb-panel{background:${PB_T.panel};border:1.5px solid ${PB_T.border};border-radius:20px;padding:18px;margin-bottom:10px;backdrop-filter:blur(8px);box-shadow:0 14px 40px rgba(0,0,0,0.3);animation:pb-rise 0.35s ease both;}
+@keyframes pb-rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.pb-tp-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.pb-tp-name{font-family:'Fredoka',sans-serif;font-size:17px;font-weight:600;color:var(--pc);}
+.pb-tp-prompt{font-size:12.5px;color:${PB_T.textSec};margin-top:1px;}
+.pb-diff-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;}
+.pb-diff-btn{padding:16px 8px 13px;border-radius:16px;border:1.5px solid;cursor:pointer;font-family:inherit;text-align:center;background:transparent;transition:transform 0.16s,box-shadow 0.16s,background 0.16s;}
+.pb-diff-btn:hover:not(:disabled){transform:translateY(-3px);}
+.pb-diff-btn:disabled{opacity:0.45;cursor:default;}
+.pb-diff-btn.easy{border-color:rgba(46,232,176,0.4);background:rgba(46,232,176,0.09);color:${PB_T.green};}
+.pb-diff-btn.medium{border-color:rgba(255,201,77,0.4);background:rgba(255,201,77,0.09);color:${PB_T.amber};}
+.pb-diff-btn.hard{border-color:rgba(255,77,141,0.4);background:rgba(255,77,141,0.09);color:${PB_T.red};}
+.pb-diff-label{font-family:'Fredoka',sans-serif;font-size:14px;font-weight:600;margin-bottom:4px;}
+.pb-q-meta{display:flex;align-items:center;gap:8px;margin-bottom:13px;}
+.pb-q-badge{padding:4px 12px;border-radius:999px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;}
+.pb-q-badge.easy{background:rgba(46,232,176,0.18);color:${PB_T.green};border:1px solid rgba(46,232,176,0.35);}
+.pb-q-badge.medium{background:rgba(255,201,77,0.18);color:${PB_T.amber};border:1px solid rgba(255,201,77,0.35);}
+.pb-q-badge.hard{background:rgba(255,77,141,0.18);color:${PB_T.red};border:1px solid rgba(255,77,141,0.35);}
+.pb-q-pts{font-size:12px;color:${PB_T.textSec};}
+.pb-q-text{font-family:'Fredoka',sans-serif;font-size:17.5px;font-weight:500;line-height:1.45;margin-bottom:16px;}
+.pb-q-opts{display:flex;flex-direction:column;gap:9px;}
+.pb-q-opt{padding:13px 15px;border-radius:14px;background:rgba(0,0,0,0.22);border:1.5px solid ${PB_T.border};text-align:left;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:500;color:${PB_T.textPri};transition:all 0.15s;display:flex;align-items:center;gap:12px;}
+.pb-q-opt:hover:not(:disabled){border-color:${PB_T.violet};background:rgba(139,143,249,0.12);transform:translateX(3px);}
+.pb-q-opt:disabled{cursor:default;}
+.pb-q-opt.correct{background:rgba(46,232,176,0.14)!important;border-color:${PB_T.green}!important;color:${PB_T.green}!important;}
+.pb-q-opt.wrong{background:rgba(255,77,141,0.1)!important;border-color:${PB_T.red}!important;color:${PB_T.red}!important;}
+.pb-q-opt.dim{opacity:0.4;}
+.pb-q-opt.picked{opacity:1;border-color:#8B8FF9!important;background:rgba(139,143,249,0.16)!important;transform:translateX(3px);}
+.pb-q-opt.picked .pb-opt-letter{background:#8B8FF9;color:#10122E;}
+.pb-opt-letter{width:25px;height:25px;border-radius:9px;background:rgba(255,255,255,0.09);display:flex;align-items:center;justify-content:center;font-family:'Fredoka',sans-serif;font-size:11.5px;font-weight:600;flex-shrink:0;color:${PB_T.textSec};transition:all 0.15s;}
+.pb-q-opt.correct .pb-opt-letter{background:${PB_T.green};color:#06281A;}
+.pb-q-opt.wrong .pb-opt-letter{background:${PB_T.red};color:#33060D;}
+.pb-result{text-align:center;animation:pb-pop 0.35s cubic-bezier(0.3,1.4,0.6,1) both;}
+@keyframes pb-pop{from{opacity:0;transform:scale(0.92);}to{opacity:1;transform:scale(1);}}
+.pb-res-icon{font-size:42px;margin-bottom:8px;display:block;animation:pb-bounce 0.5s cubic-bezier(0.3,1.6,0.6,1) both;}
+@keyframes pb-bounce{from{transform:scale(0.4) rotate(-14deg);}to{transform:scale(1) rotate(0);}}
+.pb-res-title{font-family:'Fredoka',sans-serif;font-size:21px;font-weight:600;margin-bottom:5px;}
+.pb-res-title.good{color:${PB_T.green};}.pb-res-title.bad{color:${PB_T.red};}
+.pb-res-correct-ans{font-size:13px;color:${PB_T.textSec};margin-bottom:13px;line-height:1.55;}
+.pb-move-tag{display:inline-block;font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;margin-bottom:16px;}
+.pb-move-tag.fwd{background:rgba(46,232,176,0.13);color:${PB_T.green};border:1px solid rgba(46,232,176,0.3);}
+.pb-move-tag.back{background:rgba(255,77,141,0.11);color:${PB_T.red};border:1px solid rgba(255,77,141,0.28);}
+.pb-move-tag.special{background:rgba(139,143,249,0.14);color:${PB_T.violet};border:1px solid rgba(139,143,249,0.32);}
+.pb-win{display:flex;flex-direction:column;align-items:center;padding:14px 0;animation:pb-pop 0.45s cubic-bezier(0.3,1.4,0.6,1) both;position:relative;}
+.pb-win-icon{font-size:72px;margin-bottom:12px;animation:pb-bounce 0.6s cubic-bezier(0.3,1.6,0.6,1) both;}
+.pb-win-title{font-family:'Fredoka',sans-serif;font-size:30px;font-weight:600;letter-spacing:-0.4px;margin-bottom:6px;text-align:center;}
+.pb-win-sub{font-size:14px;color:${PB_T.textSec};margin-bottom:28px;line-height:1.6;text-align:center;}
+.pb-standings{display:flex;flex-direction:column;gap:9px;margin-bottom:28px;width:100%;}
+.pb-standing{display:flex;align-items:center;gap:13px;background:${PB_T.panel};border:1.5px solid ${PB_T.border};border-radius:16px;padding:13px 16px;backdrop-filter:blur(6px);animation:pb-rise 0.4s ease both;}
+.pb-standing.first{border-color:rgba(255,201,77,0.55);box-shadow:0 0 20px rgba(255,160,50,0.18);}
+.pb-st-rank{font-size:20px;width:30px;}
+.pb-st-name{font-family:'Fredoka',sans-serif;font-size:15px;font-weight:500;flex:1;color:var(--pc);}
+.pb-st-pos{font-size:13px;color:${PB_T.textSec};font-variant-numeric:tabular-nums;}
+.pb-confetti{position:fixed;top:-12px;width:9px;height:14px;border-radius:2px;opacity:0.9;animation:pb-fall linear both;pointer-events:none;z-index:10;}
+@keyframes pb-fall{to{transform:translateY(110vh) rotate(560deg);opacity:0.7;}}
+.pb-overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:24px;animation:pb-fade 0.25s ease both;backdrop-filter:blur(10px);overflow-y:auto;}
+.pb-overlay.turn{background:rgba(7,10,22,0.82);}
+.pb-overlay.good{background:radial-gradient(600px 480px at 50% 40%,rgba(46,232,176,0.22),transparent 70%),rgba(6,10,20,0.88);}
+.pb-overlay.bad{background:radial-gradient(600px 480px at 50% 40%,rgba(255,77,141,0.2),transparent 70%),rgba(14,8,18,0.88);}
+@keyframes pb-fade{from{opacity:0;}to{opacity:1;}}
+.pb-overlay-inner{width:100%;max-width:420px;text-align:center;animation:pb-pop 0.35s cubic-bezier(0.3,1.4,0.6,1) both;}
+.pb-overlay .pb-res-icon{font-size:64px;margin-bottom:12px;}
+.pb-overlay .pb-res-title{font-size:32px;margin-bottom:10px;}
+.pb-overlay .pb-res-correct-ans{font-size:14.5px;margin-bottom:16px;}
+.pb-overlay .pb-move-tag{font-size:14px;padding:12px 22px;margin-bottom:24px;}
+@media(prefers-reduced-motion:reduce){.pb-root *{animation:none!important;transition:none!important;}}
+`;
+
+function PbCellXY(pos){const{row,col}=PB_PATH[Math.min(pos,PB_TOTAL)-1];return{x:(col+0.5)*(100/6),y:((row+0.5)/5)*100};}
+const PB_TOKEN_OFFSETS=[[-9,-9],[9,-9],[-9,9],[9,9]];
+const PbIconUp=()=><svg width="18" height="14" viewBox="0 0 14 11"><path d="M2 9 L7 2.5 L12 9" fill="none" stroke="#2EE8B0" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+const PbIconDown=()=><svg width="18" height="14" viewBox="0 0 14 11"><path d="M2 2 L7 8.5 L12 2" fill="none" stroke="#FF4D8D" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+const PbIconStar=()=><svg width="20" height="20" viewBox="-8 -8 16 16"><polygon points="0,-7 2,-2.1 6.4,-2.1 2.9,1.3 3.9,5.5 0,3 -3.9,5.5 -2.9,1.3 -6.4,-2.1 -2,-2.1" fill="#FFC94D"/></svg>;
+
+function PbBoard({players,currentPlayer}){
+  const cells=[];
+  for(let i=0;i<PB_TOTAL;i++){
+    const spaceNum=i+1;const{row,col}=PB_PATH[i];
+    let extraClass=(row+col)%2===0?" alt":"";let icon=null;
+    if(PB_PITFALLS[spaceNum]!==undefined){extraClass=" pitfall";icon=<PbIconDown/>;}
+    else if(PB_BREAKTHROUGHS[spaceNum]!==undefined){extraClass=" breakthrough";icon=<PbIconUp/>;}
+    else if(spaceNum===PB_TOTAL){extraClass=" finish";icon=<PbIconStar/>;}
+    cells.push(<div key={i} className={`pb-cell${extraClass}`} style={{gridRow:row+1,gridColumn:col+1}}><div className="pb-cell-num">{spaceNum}</div>{icon&&<div className="pb-cell-icon">{icon}</div>}</div>);
+  }
+  const onBoard=players.map((p,i)=>({...p,idx:i})).filter(p=>p.pos>=1);
+  const atStart=players.filter(p=>p.pos===0);
+  return(<>
+    <div className="pb-board-wrap">
+      <div className="pb-board-grid">{cells}</div>
+      <div className="pb-token-layer">
+        {onBoard.map(p=>{
+          const{x,y}=PbCellXY(p.pos);
+          const sharing=onBoard.filter(o=>o.pos===p.pos);
+          const slot=sharing.findIndex(o=>o.idx===p.idx);
+          const[dx,dy]=sharing.length>1?PB_TOKEN_OFFSETS[slot%4]:[0,0];
+          return(<div key={p.idx} className={`pb-token${p.idx===currentPlayer?" me":""}`} style={{"--pc":p.color,left:`calc(${x}% + ${dx}px)`,top:`calc(${y}% + ${dy}px)`}}/>);
+        })}
+      </div>
+    </div>
+    <div className="pb-start-zone">
+      {atStart.length>0&&(<><span>Waiting at start:</span>{atStart.map((p,i)=>(<span key={i} className="pb-dot" style={{"--pc":p.color,width:13,height:13}}/>))}</>)}
+    </div>
+  </>);
+}
+
+function PitfallsBreakthroughs({goBack}){
+  const styleRef=useRef(null);
+  const[screen,setScreen]=useState("setup");
+  const[numPlayers,setNumPlayers]=useState(2);
+  const[playerNames,setPlayerNames]=useState(PB_PLAYER_DEFS.map(p=>p.name));
+  const[botLevel,setBotLevel]=useState("normal");
+  const[botPick,setBotPick]=useState(null);
+  const[players,setPlayers]=useState([]);
+  const[currentPlayer,setCurrentPlayer]=useState(0);
+  const[phase,setPhase]=useState("choose");
+  const[currentQ,setCurrentQ]=useState(null);
+  const[lastResult,setLastResult]=useState(null);
+  const[usedQs,setUsedQs]=useState({easy:new Set(),medium:new Set(),hard:new Set()});
+
+  useEffect(()=>{
+    if(!styleRef.current){const el=document.createElement("style");el.textContent=PB_CSS;document.head.appendChild(el);styleRef.current=el;}
+    return()=>{if(styleRef.current){styleRef.current.remove();styleRef.current=null;}};
+  },[]);
+
+  const pickQuestion=useCallback((diff)=>{
+    const pool=PB_QUESTIONS[diff];const used=usedQs[diff];const newUsed=new Set(used);
+    if(newUsed.size>=pool.length)newUsed.clear();
+    let idx;do{idx=Math.floor(Math.random()*pool.length);}while(newUsed.has(idx));
+    newUsed.add(idx);setUsedQs(prev=>({...prev,[diff]:newUsed}));return{...pool[idx],diff};
+  },[usedQs]);
+
+  function handleStart(){
+    const humans=PB_PLAYER_DEFS.slice(0,numPlayers).map((p,i)=>({...p,name:(playerNames[i]||"").trim()||p.name,pos:0}));
+    const ps=numPlayers===1?[humans[0],{...PB_BOT_DEF,pos:0}]:humans;
+    setPlayers(ps);setCurrentPlayer(0);setPhase("choose");
+    setUsedQs({easy:new Set(),medium:new Set(),hard:new Set()});
+    setCurrentQ(null);setLastResult(null);setScreen("playing");
+  }
+
+  function handleChooseDiff(diff){const q=pickQuestion(diff);setCurrentQ(q);setPhase("question");}
+
+  function handleAnswer(optIdx){
+    const q=currentQ;const correct=optIdx===q.a;const pts=PB_DIFF_PTS[q.diff];
+    const p=players[currentPlayer];const oldPos=p.pos;
+    const landing=correct?Math.min(PB_TOTAL,oldPos+pts):oldPos;
+    let newPos=landing;
+    if(correct){if(PB_PITFALLS[landing]!==undefined)newPos=PB_PITFALLS[landing];else if(PB_BREAKTHROUGHS[landing]!==undefined)newPos=PB_BREAKTHROUGHS[landing];}
+    const won=newPos>=PB_TOTAL;
+    setLastResult({correct,pts,oldPos,landing,newPos,won,correctOpt:q.opts[q.a],diff:q.diff});
+    setPhase("result");
+  }
+
+  const advanceTurn=useCallback(()=>{
+    if(lastResult?.won){setScreen("win");return;}
+    setCurrentPlayer(prev=>(prev+1)%players.length);setPhase("choose");setCurrentQ(null);setLastResult(null);
+  },[lastResult,players.length]);
+
+  useEffect(()=>{
+    if(phase!=="result"||!lastResult)return;
+    const delay=lastResult.correct?1400:3200;
+    const t=setTimeout(()=>{if(lastResult.correct)setPhase("moving");else advanceTurn();},delay);
+    return()=>clearTimeout(t);
+  },[phase,lastResult]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(()=>{
+    if(phase!=="moving"||!lastResult)return;
+    const{oldPos,landing,newPos}=lastResult;const STEP=320;const timers=[];
+    const setPos=pos=>setPlayers(prev=>prev.map((pl,i)=>(i===currentPlayer?{...pl,pos}:pl)));
+    let t=250;
+    for(let pos=oldPos+1;pos<=landing;pos++){timers.push(setTimeout(()=>setPos(pos),t));t+=STEP;}
+    if(newPos!==landing){t+=600;const dir=newPos>landing?1:-1;for(let pos=landing+dir;dir>0?pos<=newPos:pos>=newPos;pos+=dir){timers.push(setTimeout(()=>setPos(pos),t));t+=STEP;}}
+    timers.push(setTimeout(advanceTurn,t+650));
+    return()=>timers.forEach(clearTimeout);
+  },[phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(()=>{
+    if(screen!=="playing"||phase!=="choose")return;
+    if(!players[currentPlayer]?.isBot)return;
+    const t=setTimeout(()=>{
+      const odds=PB_BOT_LEVELS[botLevel].diffOdds;const r=Math.random();
+      const diff=r<odds.easy?"easy":r<odds.easy+odds.medium?"medium":"hard";
+      handleChooseDiff(diff);
+    },1300);
+    return()=>clearTimeout(t);
+  },[screen,phase,currentPlayer,players]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(()=>{
+    if(screen!=="playing"||phase!=="question"||!currentQ)return;
+    if(!players[currentPlayer]?.isBot)return;
+    let idx;
+    if(Math.random()<PB_BOT_LEVELS[botLevel].accuracy[currentQ.diff])idx=currentQ.a;
+    else{const wrong=[0,1,2,3].filter(i=>i!==currentQ.a);idx=wrong[Math.floor(Math.random()*wrong.length)];}
+    const t1=setTimeout(()=>setBotPick(idx),2100);
+    const t2=setTimeout(()=>{setBotPick(null);handleAnswer(idx);},3200);
+    return()=>{clearTimeout(t1);clearTimeout(t2);};
+  },[screen,phase,currentQ,currentPlayer]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if(screen==="setup")return(
+    <div className="pb-root">
+      <div className="pb-inner">
+        <div className="pb-setup">
+          <button onClick={goBack} style={{alignSelf:"flex-start",background:"none",border:"none",color:PB_T.textSec,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:16,display:"flex",alignItems:"center",gap:6}}>← Back</button>
+          <div className="pb-logo">🎲</div>
+          <div className="pb-game-title"><span className="pit">Pitfalls</span><span className="amp">&amp;</span><span className="brk">Breakthroughs</span></div>
+          <div className="pb-game-sub">A knowledge board game — pick your question, risk your spaces</div>
+          <div className="pb-section-lbl">How many players?</div>
+          <div className="pb-players-row">
+            {[1,2,3,4].map(n=>(
+              <button key={n} className={`pb-pcard${numPlayers===n?" active":""}`} style={{"--pc":PB_T.violet}} onClick={()=>setNumPlayers(n)}>
+                <span style={{display:"flex",justifyContent:"center",gap:5,marginBottom:8}}>
+                  {(n===1?[PB_PLAYER_DEFS[0],PB_BOT_DEF]:PB_PLAYER_DEFS.slice(0,n)).map((p,i)=>(<span key={i} className="pb-dot" style={{"--pc":p.color,width:15,height:15}}/>))}
+                </span>
+                <div className="pb-pcard-name">{n===1?"1 Player":`${n} Players`}</div>
+              </button>
+            ))}
+          </div>
+          <div className="pb-section-lbl">Name your players</div>
+          <div className="pb-name-col">
+            {PB_PLAYER_DEFS.slice(0,numPlayers).map((p,i)=>(
+              <div key={i} className="pb-name-row" style={{"--pc":p.color}}>
+                <span className="pb-dot" style={{"--pc":p.color}}/>
+                <input className="pb-name-input" type="text" maxLength={16} value={playerNames[i]} placeholder={`Player ${i+1}`} onChange={e=>{const v=e.target.value;setPlayerNames(prev=>prev.map((n,j)=>(j===i?v:n)));}}/>
+              </div>
+            ))}
+            {numPlayers===1&&(<>
+              <div className="pb-name-row" style={{"--pc":PB_BOT_DEF.color}}>
+                <span className="pb-dot" style={{"--pc":PB_BOT_DEF.color}}/>
+                <span style={{fontFamily:"'Fredoka',sans-serif",fontSize:14,fontWeight:500,color:PB_BOT_DEF.color}}>CPU</span>
+                <span style={{marginLeft:"auto",fontSize:11,color:PB_T.textMut}}>computer opponent</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:11,color:PB_T.textMut,flexShrink:0}}>CPU skill</span>
+                {Object.keys(PB_BOT_LEVELS).map(lvl=>(
+                  <button key={lvl} onClick={()=>setBotLevel(lvl)} style={{flex:1,padding:"8px 0",borderRadius:999,cursor:"pointer",fontFamily:"'Fredoka',sans-serif",fontSize:12,fontWeight:500,background:botLevel===lvl?"rgba(139,143,249,0.18)":"transparent",border:`1.5px solid ${botLevel===lvl?PB_BOT_DEF.color:"rgba(120,140,220,0.16)"}`,color:botLevel===lvl?PB_BOT_DEF.color:PB_T.textMut,transition:"all 0.15s"}}>
+                    {PB_BOT_LEVELS[lvl].label}
+                  </button>
+                ))}
+              </div>
+            </>)}
+          </div>
+          <button className="pb-start-btn" onClick={handleStart}>Start game</button>
+          <div className="pb-rules">
+            <div className="pb-rules-title">How to play</div>
+            {[["🎯","On your turn, choose a question difficulty: Easy, Medium, or Hard."],["✅","Answer correctly → move forward: Easy +1, Medium +2, Hard +3 spaces."],["❌","Answer wrong → stay where you are."],["🚀","Land on a Breakthrough (teal ↑) → boost 3 spaces ahead!"],["☠️","Land on a Pitfall (pink ↓) → slip 3 spaces back!"],["🏆","First to reach or pass space 30 wins."],["⏭️","Turns pass automatically — no buttons between players."],["🤖","Solo mode: take on the CPU — it answers on its own turn."]].map(([em,text])=>(<div key={text} className="pb-rule"><span>{em}</span><span>{text}</span></div>))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if(screen==="win"){
+    const winner=players.reduce((a,b)=>(a.pos>b.pos?a:b));
+    const sorted=[...players].sort((a,b)=>b.pos-a.pos);
+    const confetti=Array.from({length:26},(_,i)=>({left:`${(i*37+11)%100}%`,color:[PB_T.amber,PB_T.green,PB_T.blue,PB_T.pink,PB_T.violet][i%5],delay:`${(i%9)*0.22}s`,dur:`${2.6+(i%5)*0.5}s`}));
+    return(
+      <div className="pb-root">
+        {confetti.map((c,i)=>(<div key={i} className="pb-confetti" style={{left:c.left,background:c.color,animationDelay:c.delay,animationDuration:c.dur}}/>))}
+        <div className="pb-inner">
+          <div className="pb-win">
+            <div className="pb-win-icon">🏆</div>
+            <div className="pb-win-title" style={{color:winner.color}}>{winner.name} wins!</div>
+            <div className="pb-win-sub">Reached the end of the board first.<br/>Knowledge is power!</div>
+            <div className="pb-standings">
+              {sorted.map((p,i)=>(<div key={i} className={`pb-standing${i===0?" first":""}`} style={{"--pc":p.color,animationDelay:`${i*0.09}s`}}><div className="pb-st-rank">{PB_MEDALS[i]}</div><span className="pb-dot" style={{"--pc":p.color}}/><div className="pb-st-name">{p.name}</div><div className="pb-st-pos">Space {Math.min(p.pos,PB_TOTAL)}/{PB_TOTAL}</div></div>))}
+            </div>
+            <button className="pb-start-btn" style={{width:"100%"}} onClick={()=>setScreen("setup")}>Play again</button>
+            <button onClick={goBack} style={{background:"none",border:"none",color:PB_T.textSec,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginTop:12}}>← Back to challenges</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const p=players[currentPlayer]||{};
+  return(
+    <div className="pb-root">
+      <div className="pb-inner">
+        <div className="pb-topbar">
+          <div className="pb-topbar-logo">🎲</div>
+          <div className="pb-topbar-title pb-display">Pitfalls &amp; Breakthroughs</div>
+          <button onClick={goBack} style={{marginLeft:"auto",background:"none",border:"none",color:PB_T.textSec,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>← Exit</button>
+        </div>
+        <PbBoard players={players} currentPlayer={currentPlayer}/>
+        <div className="pb-hud">
+          {players.map((pl,i)=>(<div key={pl.name} className={`pb-hud-card${i===currentPlayer?" active":""}`} style={{"--pc":pl.color}}><span className="pb-dot" style={{"--pc":pl.color}}/><div className="pb-hud-name" style={{marginTop:4}}>{pl.name}</div>{i===currentPlayer&&<div className="pb-hud-turnpill">Turn</div>}</div>))}
+        </div>
+        {phase==="choose"&&(
+          <div className="pb-panel">
+            <div className="pb-tp-header" style={{"--pc":p.color}}>
+              <span className="pb-dot lg" style={{"--pc":p.color}}/>
+              <div><div className="pb-tp-name">{p.name}'s turn</div><div className="pb-tp-prompt">{p.isBot?"CPU is picking a difficulty…":"Pick a difficulty — bigger risk, bigger move"}</div></div>
+            </div>
+            <div className="pb-diff-grid">
+              {["easy","medium","hard"].map(diff=>(<button key={diff} className={`pb-diff-btn ${diff}`} disabled={p.isBot} onClick={()=>handleChooseDiff(diff)}><div className="pb-diff-label" style={{fontSize:16,margin:"4px 0"}}>{diff.charAt(0).toUpperCase()+diff.slice(1)}</div></button>))}
+            </div>
+          </div>
+        )}
+        {phase==="question"&&currentQ&&(
+          <div className="pb-overlay turn">
+            <div className="pb-overlay-inner" style={{margin:"auto",textAlign:"left"}}>
+              <div className="pb-panel" style={{marginBottom:0}}>
+                <div className="pb-q-meta"><span className={`pb-q-badge ${currentQ.diff}`}>{currentQ.diff}</span><span className="pb-q-pts">{p.name}</span></div>
+                <div className="pb-q-text">{currentQ.q}</div>
+                <div className="pb-q-opts">
+                  {currentQ.opts.map((opt,i)=>(<button key={i} className={`pb-q-opt${p.isBot?(botPick===i?" picked":" dim"):""}`} disabled={p.isBot} onClick={()=>handleAnswer(i)}><span className="pb-opt-letter">{"ABCD"[i]}</span>{opt}</button>))}
+                </div>
+                {p.isBot&&<div style={{marginTop:14,fontSize:12.5,color:PB_T.textSec,textAlign:"center"}}>{botPick===null?"CPU is thinking…":`CPU picks ${"ABCD"[botPick]}`}</div>}
+              </div>
+            </div>
+          </div>
+        )}
+        {phase==="result"&&currentQ&&lastResult&&(
+          <div className={`pb-overlay ${lastResult.correct?"good":"bad"}`}>
+            <div className="pb-overlay-inner">
+              <span className="pb-res-icon">{lastResult.correct?"🎯":"😬"}</span>
+              <div className={`pb-res-title ${lastResult.correct?"good":"bad"}`}>{lastResult.correct?"Correct!":"Incorrect"}</div>
+              {!lastResult.correct&&<div className="pb-res-correct-ans">The correct answer was <strong style={{color:PB_T.textPri}}>{lastResult.correctOpt}</strong></div>}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
