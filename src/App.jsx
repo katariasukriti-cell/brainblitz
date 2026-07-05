@@ -4948,19 +4948,6 @@ function pbBuildPath(){const p=[];for(let row=4;row>=0;row--){const fromLeft=(4-
 const PB_PATH=pbBuildPath();
 function buildPBQuestions() {
   const easy = [], medium = [], hard = [];
-  ARTICLES.forEach(article => {
-    const qs = article.quiz?.questions;
-    if (!qs) return;
-    qs.forEach((q, i) => {
-      // Article questions always require article-specific recall, so they are never
-      // truly "easy" for a general audience. Map: pos 0 → medium, pos 1 → medium,
-      // pos 2+ → hard. Easy stays as pure general-knowledge seed questions only.
-      const diff = q.diff === "hard" ? "hard" : i >= 2 ? "hard" : "medium";
-      const entry = { q: q.q, opts: q.opts, a: q.ans };
-      if (diff === "hard") hard.push(entry);
-      else medium.push(entry);
-    });
-  });
   // Seed questions — hand-calibrated general knowledge, not article-specific
   const SEED = {
   easy:[
@@ -5058,84 +5045,114 @@ function buildPBQuestions() {
     {q:"What is the most spoken language in the world by number of native speakers?",opts:["English","Hindi","Spanish","Mandarin Chinese"],a:3},
   ],
   medium:[
-    {q:"Which Indian mathematician formalised rules for zero in 628 AD?",opts:["Aryabhata","Ramanujan","Brahmagupta","Bhaskara"],a:2},
-    {q:"What is the First Law of Thermodynamics about?",opts:["Energy cannot be created or destroyed","Heat always flows cold to hot","Objects in motion stay in motion","Force equals mass times acceleration"],a:0},
-    {q:"In which year did the First World War begin?",opts:["1912","1913","1914","1916"],a:2},
+    // Science & nature
     {q:"What does DNA stand for?",opts:["Deoxyribonucleic acid","Dinitrogen acid","Deoxyribonitric acid","Dynamic nucleic acid"],a:0},
-    {q:"Which empire was ruled by Akbar the Great?",opts:["Ottoman","Persian","Mughal","Maratha"],a:2},
-    {q:"What is the term for a word that reads the same forwards and backwards?",opts:["Anagram","Palindrome","Synonym","Homophone"],a:1},
-    {q:"Which artist painted the Sistine Chapel ceiling?",opts:["Leonardo da Vinci","Raphael","Caravaggio","Michelangelo"],a:3},
     {q:"What is the powerhouse of the cell?",opts:["Nucleus","Ribosome","Mitochondria","Vacuole"],a:2},
-    {q:"What is the speed of light in a vacuum approximately?",opts:["300,000 km/s","30,000 km/s","3,000,000 km/s","3,000 km/s"],a:0},
-    {q:"Who wrote 'One Hundred Years of Solitude'?",opts:["Pablo Neruda","Jorge Luis Borges","Gabriel García Márquez","Mario Vargas Llosa"],a:2},
-    {q:"What year did India gain independence?",opts:["1945","1946","1947","1948"],a:2},
-    {q:"The Amazon River discharges into which ocean?",opts:["Pacific","Caribbean","Indian","Atlantic"],a:3},
-    {q:"Which country has the most UNESCO World Heritage Sites?",opts:["India","France","China","Italy"],a:3},
-    {q:"What is the Silk Road famous for?",opts:["A Roman road network","Ancient trade routes between China and the West","A medieval pilgrimage path","A spice trading sea route"],a:1},
-    {q:"What is the term for the study of earthquakes?",opts:["Volcanology","Seismology","Geology","Tectonics"],a:1},
-    {q:"Which gas makes up the majority of Earth's atmosphere?",opts:["Oxygen","Carbon dioxide","Argon","Nitrogen"],a:3},
-    {q:"Who developed the theory of natural selection?",opts:["Gregor Mendel","Louis Pasteur","Charles Darwin","Alfred Russel Wallace"],a:2},
-    {q:"What does the Richter scale measure?",opts:["Wind speed","Earthquake magnitude","Volcanic activity","Tsunami height"],a:1},
-    {q:"In which year did the Soviet Union collapse?",opts:["1989","1990","1991","1992"],a:2},
     {q:"What is the chemical formula for water?",opts:["HO","H2O","H3O","H2O2"],a:1},
-    {q:"Who was the first woman to win a Nobel Prize?",opts:["Rosalind Franklin","Ada Lovelace","Marie Curie","Florence Nightingale"],a:2},
-    {q:"What is the longest bone in the human body?",opts:["Humerus","Tibia","Spine","Femur"],a:3},
-    {q:"In which year did the French Revolution begin?",opts:["1776","1783","1789","1799"],a:2},
+    {q:"What is the chemical formula for carbon dioxide?",opts:["CO","CO2","C2O","CO3"],a:1},
     {q:"Which element has the chemical symbol Fe?",opts:["Fluorine","Francium","Iron","Fermium"],a:2},
     {q:"Which element has the chemical symbol Na?",opts:["Nickel","Nitrogen","Neon","Sodium"],a:3},
-    {q:"What does GDP stand for?",opts:["Gross Development Product","General Domestic Product","Gross Domestic Product","Global Development Plan"],a:2},
-    {q:"In what year was the United Nations founded?",opts:["1939","1942","1945","1948"],a:2},
-    {q:"What does NASA stand for?",opts:["National Aviation and Space Administration","National Aeronautics and Space Administration","North American Space Agency","National Aerospace and Science Authority"],a:1},
-    {q:"Which planet has the most confirmed moons?",opts:["Jupiter","Uranus","Neptune","Saturn"],a:3},
-    {q:"Who wrote The Communist Manifesto?",opts:["Lenin and Stalin","Marx and Engels","Rousseau and Voltaire","Hegel and Schopenhauer"],a:1},
+    {q:"What is the speed of light in a vacuum approximately?",opts:["300,000 km/s","30,000 km/s","3,000,000 km/s","3,000 km/s"],a:0},
+    {q:"What does the Richter scale measure?",opts:["Wind speed","Earthquake magnitude","Volcanic activity","Tsunami height"],a:1},
+    {q:"What is the term for the study of earthquakes?",opts:["Volcanology","Seismology","Geology","Tectonics"],a:1},
+    {q:"Which gas makes up the majority of Earth's atmosphere?",opts:["Oxygen","Carbon dioxide","Argon","Nitrogen"],a:3},
+    {q:"What gas makes up about 21% of Earth's atmosphere?",opts:["Nitrogen","Carbon dioxide","Oxygen","Argon"],a:2},
+    {q:"What is the longest bone in the human body?",opts:["Humerus","Tibia","Spine","Femur"],a:3},
+    {q:"What is the smallest bone in the human body?",opts:["Kneecap","Stapes (ear bone)","Little toe bone","Wrist bone"],a:1},
+    {q:"Who developed the theory of natural selection?",opts:["Gregor Mendel","Louis Pasteur","Charles Darwin","Alfred Russel Wallace"],a:2},
     {q:"What is the largest desert in the world?",opts:["Sahara","Arabian","Gobi","Antarctic"],a:3},
+    {q:"Which planet has the most confirmed moons?",opts:["Jupiter","Uranus","Neptune","Saturn"],a:3},
+    {q:"In which year did humans first land on the Moon?",opts:["1965","1967","1969","1971"],a:2},
+    // History & geography
+    {q:"In which year did the First World War begin?",opts:["1912","1913","1914","1916"],a:2},
+    {q:"In which year did the French Revolution begin?",opts:["1776","1783","1789","1799"],a:2},
+    {q:"In which year did the Soviet Union collapse?",opts:["1989","1990","1991","1992"],a:2},
+    {q:"What year did India gain independence?",opts:["1945","1946","1947","1948"],a:2},
+    {q:"Which country has the most UNESCO World Heritage Sites?",opts:["India","France","China","Italy"],a:3},
+    {q:"What is the Silk Road famous for?",opts:["A Roman road network","Ancient trade routes between China and the West","A medieval pilgrimage path","A spice trading sea route"],a:1},
+    {q:"In what year was the United Nations founded?",opts:["1939","1942","1945","1948"],a:2},
+    {q:"What was the Cold War?",opts:["A conflict fought in Arctic regions","Geopolitical tension between the USA and USSR after WWII","A trade war between Europe and Asia","A war fought entirely at sea"],a:1},
+    {q:"What was apartheid?",opts:["A system of religious law","A system of racial segregation in South Africa","A type of colonial government","An economic trade policy"],a:1},
+    {q:"Which country gifted the Statue of Liberty to the USA?",opts:["Britain","Italy","France","Spain"],a:2},
+    {q:"What year was the Eiffel Tower completed?",opts:["1879","1884","1889","1895"],a:2},
+    {q:"In which city were the first modern Olympic Games held?",opts:["Rome","London","Paris","Athens"],a:3},
+    {q:"Who was the first Prime Minister of India?",opts:["Mahatma Gandhi","Sardar Patel","Jawaharlal Nehru","B.R. Ambedkar"],a:2},
+    {q:"What was the Manhattan Project?",opts:["A plan to rebuild New York after the war","The US programme to develop nuclear weapons in WWII","A secret spy network in Europe","A US economic stimulus programme"],a:1},
+    // People & culture
+    {q:"Who was the first woman to win a Nobel Prize?",opts:["Rosalind Franklin","Ada Lovelace","Marie Curie","Florence Nightingale"],a:2},
+    {q:"Which artist painted the Sistine Chapel ceiling?",opts:["Leonardo da Vinci","Raphael","Caravaggio","Michelangelo"],a:3},
+    {q:"Who wrote 'One Hundred Years of Solitude'?",opts:["Pablo Neruda","Jorge Luis Borges","Gabriel García Márquez","Mario Vargas Llosa"],a:2},
+    {q:"Who wrote The Divine Comedy?",opts:["Petrarch","Virgil","Dante Alighieri","Boccaccio"],a:2},
+    {q:"Who wrote Crime and Punishment?",opts:["Leo Tolstoy","Ivan Turgenev","Anton Chekhov","Fyodor Dostoevsky"],a:3},
+    {q:"Who composed The Four Seasons?",opts:["Bach","Handel","Vivaldi","Mozart"],a:2},
+    {q:"Who invented the World Wide Web?",opts:["Bill Gates","Steve Jobs","Vint Cerf","Tim Berners-Lee"],a:3},
+    {q:"In which country was the printing press invented?",opts:["France","Italy","China","Germany"],a:3},
+    {q:"Which country invented paper?",opts:["Egypt","China","India","Mesopotamia"],a:1},
+    {q:"What is the term for a word that reads the same forwards and backwards?",opts:["Anagram","Palindrome","Synonym","Homophone"],a:1},
+    // Economics & general
+    {q:"What does GDP stand for?",opts:["Gross Development Product","General Domestic Product","Gross Domestic Product","Global Development Plan"],a:2},
+    {q:"What does NASA stand for?",opts:["National Aviation and Space Administration","National Aeronautics and Space Administration","North American Space Agency","National Aerospace and Science Authority"],a:1},
     {q:"In which country was Nikola Tesla born?",opts:["Croatia","Hungary","Serbia","Austria"],a:2},
     {q:"Which country has the most natural lakes?",opts:["Russia","USA","Finland","Canada"],a:3},
-    {q:"Who was the first female Prime Minister of Australia?",opts:["Penny Wong","Julia Gillard","Julie Bishop","Annastacia Palaszczuk"],a:1},
+    {q:"Who was the first female Prime Minister of Australia?",opts:["Penny Wong","Julia Gillard","Julie Bishop","Tanya Plibersek"],a:1},
     {q:"What is the capital of Ukraine?",opts:["Lviv","Odessa","Kharkiv","Kyiv"],a:3},
-    {q:"What is the chemical formula for carbon dioxide?",opts:["CO","CO2","C2O","CO3"],a:1},
+    {q:"What is the capital of Iran?",opts:["Isfahan","Mashhad","Shiraz","Tehran"],a:3},
+    {q:"What is the capital of Turkey?",opts:["Istanbul","Izmir","Antalya","Ankara"],a:3},
+    {q:"What is the capital of Pakistan?",opts:["Lahore","Karachi","Islamabad","Peshawar"],a:2},
+    {q:"Which empire was ruled by Akbar the Great?",opts:["Ottoman","Persian","Mughal","Maratha"],a:2},
+    {q:"The Amazon River discharges into which ocean?",opts:["Pacific","Caribbean","Indian","Atlantic"],a:3},
   ],
   hard:[
+    // Philosophy & ideas
     {q:"What did David Chalmers call the central mystery of consciousness?",opts:["The hard problem","The binding problem","The explanatory gap","The zombie problem"],a:0},
-    {q:"Which ancient Indian text written by Kautilya is compared to Machiavelli's Prince?",opts:["Arthashastra","Manusmriti","Rigveda","Upanishads"],a:0},
-    {q:"What ecological phenomenon occurs when reintroducing a top predator reshapes an entire ecosystem?",opts:["Ecological succession","Trophic cascade","Keystone effect","Species rebound"],a:1},
-    {q:"What is the Chandrasekhar Limit?",opts:["Maximum mass of a neutron star","Maximum mass of a white dwarf before collapse","Minimum mass needed for nuclear fusion","Temperature at which stars form"],a:1},
-    {q:"In Nash Equilibrium, no player can benefit by doing what?",opts:["Playing the game again","Changing strategy while others keep theirs","Forming alliances","Observing other players"],a:1},
-    {q:"What does EMDR stand for in trauma therapy?",opts:["Electromagnetic deep reset","Eye Movement Desensitisation and Reprocessing","Extended mood disorder recovery","Early memory directive response"],a:1},
-    {q:"What was the Bandung Conference of 1955 primarily about?",opts:["Nuclear disarmament","Founding the Non-Aligned Movement","Establishing the UN","Decolonising Africa"],a:1},
+    {q:"Which philosopher wrote 'Critique of Pure Reason'?",opts:["Descartes","Hegel","Schopenhauer","Immanuel Kant"],a:3},
+    {q:"Who wrote 'The Republic'?",opts:["Aristotle","Socrates","Plato","Epicurus"],a:2},
+    {q:"What is the Socratic method?",opts:["Writing philosophical treatises","Dialogue through questioning to stimulate critical thinking","Observing nature to derive laws","Meditation to achieve inner truth"],a:1},
+    {q:"What does 'wu wei' mean in Taoist philosophy?",opts:["Ritual ceremony","Non-action or effortless action aligned with nature","Sacred text study","Complete social withdrawal"],a:1},
     {q:"In Buddhist philosophy, what does 'anatta' mean?",opts:["Compassion for all beings","The cycle of birth and death","Non-self — no permanent unchanging self","The path to enlightenment"],a:2},
-    {q:"What does Branko Milanovic's 'elephant chart' illustrate?",opts:["How inequality between countries grew","Global income gains 1988–2008 showing stagnation for rich-country middle classes","Why GDP growth does not equal human development","Trade and economic growth relationship"],a:1},
+    {q:"What does 'epistemic humility' mean?",opts:["Refusing to form opinions","Recognising the limits of one's own knowledge","Being humble in social situations","Avoiding scientific claims"],a:1},
+    {q:"What is 'Occam's Razor'?",opts:["A logical paradox","The principle that the simplest explanation is usually correct","A method of scientific falsification","A test for circular reasoning"],a:1},
+    // Science & cosmos
+    {q:"What is the Heisenberg Uncertainty Principle?",opts:["Energy is always conserved","Light speed is constant for all observers","You cannot simultaneously know the exact position and momentum of a particle","Particles attract proportionally to their mass"],a:2},
+    {q:"What is the Drake Equation used to estimate?",opts:["Age of the universe","Distance to nearby galaxies","Number of communicating extraterrestrial civilisations in the galaxy","Mass of black holes"],a:2},
+    {q:"What is the Chandrasekhar Limit?",opts:["Maximum mass of a neutron star","Maximum mass of a white dwarf before it collapses","Minimum mass needed for nuclear fusion","Temperature at which stars form"],a:1},
+    {q:"What is the 'Great Oxygenation Event' approximately 2.4 billion years ago?",opts:["Earth's first ice age","When photosynthetic bacteria filled the atmosphere with oxygen","When the first animals appeared","When the Moon formed from a giant impact"],a:1},
     {q:"The Pangea supercontinent began breaking apart approximately how many years ago?",opts:["100 million","175 million","250 million","400 million"],a:1},
     {q:"What is the 'RNA World' hypothesis about?",opts:["A network of RNA-sharing organisms","RNA as the first self-replicating molecule before DNA and proteins","A world in which RNA replaced DNA","Viral RNA dominating early Earth"],a:1},
-    {q:"What does 'wu wei' mean in Taoist philosophy?",opts:["Ritual ceremony","Non-action or effortless action aligned with nature","Sacred text study","Complete social withdrawal"],a:1},
+    {q:"What is the Doppler effect?",opts:["The bending of light around massive objects","A change in wave frequency due to relative motion between source and observer","The scattering of light through a prism","The delay between lightning and thunder"],a:1},
+    {q:"What is dark matter?",opts:["Matter in deep ocean trenches","Invisible matter accounting for most of the universe's mass","Antimatter produced in particle collisions","Black holes and neutron stars combined"],a:1},
+    {q:"What is the 'butterfly effect' in chaos theory?",opts:["Butterfly migration patterns affecting weather","Small changes in initial conditions leading to vastly different outcomes","The aerodynamics of insect flight","A metaphor for ecosystem fragility"],a:1},
+    // Psychology & behaviour
+    {q:"What is the Dunning-Kruger effect?",opts:["Experts underestimating their knowledge","People with low competence overestimating their ability","The tendency to follow authority","Memory distortion over time"],a:1},
+    {q:"What is 'cognitive dissonance'?",opts:["Inability to form memories","The discomfort of holding contradictory beliefs simultaneously","Difficulty processing language","Heightened awareness under stress"],a:1},
+    {q:"What is 'confirmation bias'?",opts:["Trusting experts over personal experience","The tendency to seek information that confirms existing beliefs","Overconfidence in memory accuracy","Preferring recent information over older data"],a:1},
+    {q:"What is the Baader-Meinhof phenomenon?",opts:["A Cold War political movement","The illusion of seeing something more frequently after first noticing it","A memory-formation disorder","Groupthink in organisations"],a:1},
+    {q:"What is Maslow's hierarchy of needs?",opts:["A theory of economic development","A theory of human motivation from basic survival needs to self-actualisation","A model of child development","A framework for organisational management"],a:1},
     {q:"Which two neuroscientists discovered REM sleep in 1953?",opts:["Freud and Jung","Pavlov and Skinner","Aserinsky and Kleitman","Seligman and Csikszentmihalyi"],a:2},
-    {q:"What did AlphaFold2 solve that had challenged biology for decades?",opts:["How DNA replicates","Predicting 3D protein structure from amino acid sequences","How RNA transcribes DNA","The origin of the genetic code"],a:1},
-    {q:"What is the 'Great Oxygenation Event' approximately 2.4 billion years ago?",opts:["Earth's first ice age","When photosynthetic bacteria filled the atmosphere with oxygen","When the first animals appeared","When the Moon formed from a giant impact"],a:1},
+    // Economics & society
     {q:"What is the Gini coefficient used to measure?",opts:["Economic growth rate","Income inequality within a country","National debt levels","Inflation rates"],a:1},
-    {q:"Which philosopher wrote 'Critique of Pure Reason'?",opts:["Descartes","Hegel","Schopenhauer","Immanuel Kant"],a:3},
-    {q:"What is the Drake Equation used to estimate?",opts:["Age of the universe","Distance to nearby galaxies","Number of communicating extraterrestrial civilisations in the galaxy","Mass of black holes"],a:2},
-    {q:"What does 'cognitive dissonance' mean?",opts:["Inability to form memories","The discomfort of holding contradictory beliefs simultaneously","Difficulty processing language","Heightened awareness under stress"],a:1},
-    {q:"What is the Heisenberg Uncertainty Principle?",opts:["Energy is always conserved","Light speed is constant for all observers","You cannot simultaneously know exact position and momentum of a particle","Particles attract each other proportionally to their mass"],a:2},
+    {q:"In Nash Equilibrium, no player can benefit by doing what?",opts:["Playing the game again","Changing strategy while others keep theirs","Forming alliances","Observing other players"],a:1},
     {q:"What is 'comparative advantage' in economics?",opts:["When a country dominates all trade","Producing goods at the lowest opportunity cost relative to others","Having the largest economy","Exporting more than you import"],a:1},
     {q:"What is the 'tragedy of the commons'?",opts:["A theatrical genre about poverty","Overuse of shared resources when individuals act in self-interest","Inequality in democratic systems","The decline of public infrastructure"],a:1},
     {q:"What is 'moral hazard' in economics?",opts:["Investing in unethical industries","Corruption in public institutions","When protection from risk encourages riskier behaviour","The ethics of price gouging"],a:2},
-    {q:"What did the Treaty of Westphalia (1648) establish?",opts:["The end of the Crusades","The founding of the Holy Roman Empire","The modern concept of state sovereignty","The first international trade agreement"],a:2},
     {q:"What is 'quantitative easing'?",opts:["Reducing government spending","Raising interest rates to slow inflation","A central bank buying assets to inject money into the economy","Cutting taxes to stimulate growth"],a:2},
-    {q:"What is the Overton Window?",opts:["A surveillance technique","The range of policies considered politically acceptable at a given time","A method of negotiation","A concept in architecture"],a:1},
-    {q:"What is the Flynn Effect?",opts:["The tendency for markets to overcorrect","The observed rise in IQ scores across generations worldwide","Increasing urbanisation over time","The acceleration of technological change"],a:1},
-    {q:"What does 'epistemic humility' mean?",opts:["Refusing to form opinions","Recognising the limits of one's own knowledge","Being humble in social situations","Avoiding scientific claims"],a:1},
-    {q:"What is the 'poverty of the stimulus' argument in linguistics?",opts:["Children hear too little language to learn well","Children learn grammar beyond what their input could explain, implying innate knowledge","Poor children learn language more slowly","Language input quality matters more than quantity"],a:1},
     {q:"What is 'arbitrage' in finance?",opts:["Long-term value investing","Borrowing to invest in stocks","Exploiting price differences of the same asset across different markets","Short selling overvalued assets"],a:2},
+    {q:"What is the Overton Window?",opts:["A surveillance technique","The range of policies considered politically acceptable at a given time","A method of negotiation","A concept in architecture"],a:1},
+    {q:"What did the Treaty of Westphalia (1648) establish?",opts:["The end of the Crusades","The founding of the Holy Roman Empire","The modern concept of state sovereignty","The first international trade agreement"],a:2},
+    // History & politics
+    {q:"What was the Bandung Conference of 1955 primarily about?",opts:["Nuclear disarmament","Founding the Non-Aligned Movement","Establishing the UN","Decolonising Africa"],a:1},
+    {q:"Which ancient Indian text written by Kautilya is compared to Machiavelli's Prince?",opts:["Arthashastra","Manusmriti","Rigveda","Upanishads"],a:0},
+    {q:"What caused the Great Depression of 1929?",opts:["A world war","A stock market crash followed by banking failures and economic collapse","A global drought and famine","A trade embargo by European nations"],a:1},
+    {q:"What is 'realpolitik'?",opts:["A form of democratic politics","Politics based on practical power rather than ideology or ethics","A system of proportional representation","A Cold War strategy"],a:1},
+    {q:"What is the Flynn Effect?",opts:["The tendency for markets to overcorrect","The observed rise in IQ scores across generations worldwide","Increasing urbanisation over time","The acceleration of technological change"],a:1},
+    {q:"What does EMDR stand for in trauma therapy?",opts:["Electromagnetic deep reset","Eye Movement Desensitisation and Reprocessing","Extended mood disorder recovery","Early memory directive response"],a:1},
+    {q:"What ecological phenomenon occurs when reintroducing a top predator reshapes an entire ecosystem?",opts:["Ecological succession","Trophic cascade","Keystone effect","Species rebound"],a:1},
+    {q:"What does Branko Milanovic's 'elephant chart' illustrate?",opts:["How inequality between countries grew","Global income gains 1988–2008 showing stagnation for rich-country middle classes","Why GDP growth does not equal human development","Trade and economic growth relationship"],a:1},
+    {q:"What is the 'poverty of the stimulus' argument in linguistics?",opts:["Children hear too little language to learn well","Children learn grammar beyond what their input could explain, implying innate knowledge","Poor children learn language more slowly","Language input quality matters more than quantity"],a:1},
+    {q:"What did AlphaFold2 solve that had challenged biology for decades?",opts:["How DNA replicates","Predicting 3D protein structure from amino acid sequences","How RNA transcribes DNA","The origin of the genetic code"],a:1},
   ],
   };
-  // Always merge seed questions in — they are genuinely difficulty-calibrated general
-  // knowledge questions, whereas article-derived questions test article recall and tend
-  // to skew harder even when marked "easy".
-  return {
-    easy:   [...SEED.easy,   ...easy],
-    medium: [...SEED.medium, ...medium],
-    hard:   [...SEED.hard,   ...hard],
-  };
+  return { easy: SEED.easy, medium: SEED.medium, hard: SEED.hard };
 }
 const PB_QUESTIONS = buildPBQuestions();
 // Shuffle each pool daily so returning players encounter questions in a fresh order
