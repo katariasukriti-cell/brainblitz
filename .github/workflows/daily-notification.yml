@@ -14,6 +14,16 @@ jobs:
         id: hour
         run: echo "value=$(date -u +%-H)" >> $GITHUB_OUTPUT
 
+      - name: Check secret is present
+        env:
+          ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
+        run: |
+          if [ -z "$ONESIGNAL_REST_API_KEY" ]; then
+            echo "ERROR: ONESIGNAL_REST_API_KEY secret is empty or not set"
+            exit 1
+          fi
+          echo "Secret is set (length: ${#ONESIGNAL_REST_API_KEY} chars)"
+
       - name: Send push notification via OneSignal
         env:
           ONESIGNAL_APP_ID: b05e6457-a979-49ba-80fc-82facd95120d
@@ -43,7 +53,6 @@ jobs:
 
           echo "HTTP $HTTP_CODE — $BODY"
 
-          # Treat 200 and "No recipients" (no users in that hour slot) as success
           if [ "$HTTP_CODE" != "200" ]; then
             echo "OneSignal returned unexpected status $HTTP_CODE" >&2
             exit 1
