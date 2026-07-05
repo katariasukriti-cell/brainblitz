@@ -336,9 +336,6 @@ jobs:
           async function main() {
             const now = new Date();
             const utcHour = now.getUTCHours();
-            const utcMinute = now.getUTCMinutes();
-            // Round current minute down to nearest 15-minute slot
-            const minuteSlot = Math.floor(utcMinute / 15) * 15;
 
             // Get day of year for fact rotation
             const start = new Date(now.getUTCFullYear(), 0, 0);
@@ -347,18 +344,18 @@ jobs:
             const dayOfYear = Math.floor(diff / oneDay);
             const fact = FACTS[dayOfYear % FACTS.length];
 
-            console.log(`UTC hour: ${utcHour} | UTC minute slot: ${minuteSlot} | Day of year: ${dayOfYear}`);
+            console.log(`UTC hour: ${utcHour} | Day of year: ${dayOfYear}`);
 
             // 1. PERSONALISED FACT OF THE DAY
-            // Send to users whose preferred UTC hour AND minute slot match
+            // Send to users whose preferred UTC hour matches — web_push_topic ensures
+            // repeated sends within the hour replace rather than stack on the device
             await sendNotification({
               filters: [
-                { field: 'tag', key: 'notif_utc_hour',   relation: '=', value: String(utcHour) },
+                { field: 'tag', key: 'notif_utc_hour', relation: '=', value: String(utcHour) },
                 { operator: 'AND' },
-                { field: 'tag', key: 'notif_utc_minute', relation: '=', value: String(minuteSlot) },
-                { operator: 'AND' },
-                { field: 'tag', key: 'notif_enabled',    relation: '=', value: 'true' }
+                { field: 'tag', key: 'notif_enabled',  relation: '=', value: 'true' }
               ],
+              web_push_topic: 'daily-fact',
               headings: { en: '🧠 BrainBlitz — Fact of the Day' },
               contents: { en: fact },
               url: 'https://brainblitz-gules.vercel.app'

@@ -3167,17 +3167,10 @@ export default function App() {
       const now = new Date();
       const localOffset = now.getTimezoneOffset(); // minutes behind UTC
       const prefMinutes = h * 60 + m + localOffset; // convert local time to UTC minutes
-      const totalUtcMinutes = ((prefMinutes % 1440) + 1440) % 1440;
-      const utcHour = Math.floor(totalUtcMinutes / 60);
-      const rawMin = totalUtcMinutes % 60;
-      // Round to nearest 15-minute slot
-      const roundedMin = Math.round(rawMin / 15) * 15;
-      const finalHour = roundedMin === 60 ? (utcHour + 1) % 24 : utcHour;
-      const finalMin = roundedMin === 60 ? 0 : roundedMin;
+      const utcHour = ((Math.floor(prefMinutes / 60)) % 24 + 24) % 24;
       window.OneSignalDeferred?.push((OneSignal) => {
         OneSignal.User.addTags({
-          notif_utc_hour: String(finalHour),
-          notif_utc_minute: String(finalMin),
+          notif_utc_hour: String(utcHour),
           notif_enabled: "true"
         });
       });
