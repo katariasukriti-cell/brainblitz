@@ -4952,11 +4952,12 @@ function buildPBQuestions() {
     const qs = article.quiz?.questions;
     if (!qs) return;
     qs.forEach((q, i) => {
-      // Use diff field if present, otherwise fall back to question position
-      const diff = q.diff || ["easy","medium","hard"][Math.min(i, 2)];
+      // Article questions always require article-specific recall, so they are never
+      // truly "easy" for a general audience. Map: pos 0 → medium, pos 1 → medium,
+      // pos 2+ → hard. Easy stays as pure general-knowledge seed questions only.
+      const diff = q.diff === "hard" ? "hard" : i >= 2 ? "hard" : "medium";
       const entry = { q: q.q, opts: q.opts, a: q.ans };
-      if (diff === "easy") easy.push(entry);
-      else if (diff === "hard") hard.push(entry);
+      if (diff === "hard") hard.push(entry);
       else medium.push(entry);
     });
   });
