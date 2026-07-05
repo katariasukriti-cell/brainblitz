@@ -1,0 +1,50 @@
+name: Daily BrainBlitz Notification
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # Runs at the top of every hour, UTC
+  workflow_dispatch:        # Allows a manual test run from GitHub Actions tab
+
+jobs:
+  send-notification:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Determine current UTC hour
+        id: hour
+        run: echo "value=$(date -u +%-H)" >> $GITHUB_OUTPUT
+
+      - name: Send push notification via OneSignal
+        env:
+          ONESIGNAL_APP_ID: b05e6457-a979-49ba-80fc-82facd95120d
+          ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
+          CURRENT_HOUR: ${{ steps.hour.outputs.value }}
+        run: |
+          echo "Sending to users with notif_utc_hour = $CURRENT_HOUR"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: Key $ONESIGNAL_REST_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"app_id\": \"$ONESIGNAL_APP_ID\",
+              \"filters\": [
+                {\"field\": \"tag\", \"key\": \"notif_utc_hour\", \"relation\": \"=\", \"value\": \"$CURRENT_HOUR\"},
+                {\"operator\": \"AND\"},
+                {\"field\": \"tag\", \"key\": \"notif_enabled\",  \"relation\": \"=\", \"value\": \"true\"}
+              ],
+              \"headings\": {\"en\": \"🧠 Your daily challenge is ready!\"},
+              \"contents\": {\"en\": \"Open BrainBlitz to read today's article, take the quiz, and keep your streak going.\"},
+              \"web_push_topic\": \"daily-challenge\"
+            }" \
+            https://onesignal.com/api/v1/notifications)
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+
+          echo "HTTP $HTTP_CODE — $BODY"
+
+          # Treat 200 and "No recipients" (no users in that hour slot) as success
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "OneSignal returned unexpected status $HTTP_CODE" >&2
+            exit 1
+          fi
