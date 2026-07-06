@@ -3142,7 +3142,7 @@ export default function App() {
       const ns = streak + 1; setStreak(ns); S.set("bb_streak", ns); S.set("bb_sdate", TODAY);
     }
     setXp(x => { const nx = x + correct * 30; S.set("bb_xp", nx); return nx; });
-    recordScore("Daily", correct, DAILY_QS.length);
+    recordScore("Daily", correct, 5);
   };
 
   const finishReview = (correct, total) => {
